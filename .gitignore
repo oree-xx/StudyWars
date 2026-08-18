@@ -1,0 +1,19 @@
+# Python
+server/venv/
+server/__pycache__/
+**/__pycache__/
+*.pyc
+server/.env
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Node / React
+client/node_modules/
+client/dist/
+client/.env
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
