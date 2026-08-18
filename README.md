@@ -13,8 +13,7 @@ A live, multiplayer quiz game (Kahoot-style) where the host uploads their notes 
 - **Backend:** Python, FastAPI, WebSockets, Anthropic Claude API
 - **Frontend:** React (Vite)
 
-## Project status
-🚧 In active development — built incrementally, commit by commit.
+
 
 ## Local development
-Setup instructions will be added as each piece lands.
+Setup instructions will be added later on.
