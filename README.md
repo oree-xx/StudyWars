@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/brand/logo.svg" alt="StudyWars" width="420" />
+  <img src="docs/brand/logo.svg" alt="StudyWars" width="760" />
 
   **Turn your notes into a live, multiplayer quiz in seconds.**
 
@@ -61,15 +61,15 @@ flowchart LR
 ## Screenshots
 
 | Home | Host setup | Review questions |
-|---|---|---|
+|:---:|:---:|:---:|
 | ![Home screen](docs/screenshots/home.jpg) | ![Host setup form](docs/screenshots/host-setup.jpg) | ![Review generated questions](docs/screenshots/question-review.jpg) |
 
 | Join a quiz | Host lobby | Live question |
-|---|---|---|
+|:---:|:---:|:---:|
 | ![Join a quiz](docs/screenshots/join-quiz.jpg) | ![Host lobby with a player joined](docs/screenshots/host-lobby.jpg) | ![Live question on the host screen](docs/screenshots/host-live-question.jpg) |
 
 | Player answering | leaderboard | Final results |
-|---|---|---|
+|:---:|:---:|:---:|
 | ![Player answer options](docs/screenshots/player-answer-options.jpg) | ![Reveal screen with leaderboard](docs/screenshots/host-reveal.jpg) | ![Final results screen](docs/screenshots/final-results.jpg) |
 
 ## Tech stack
