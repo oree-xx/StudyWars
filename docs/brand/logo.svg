@@ -1,4 +1,4 @@
-<svg width="640" height="160" viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StudyWars">
+<svg width="508" height="160" viewBox="0 0 508 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StudyWars">
   <title>StudyWars</title>
   <defs>
     <linearGradient id="wordGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -11,12 +11,17 @@
     </linearGradient>
   </defs>
 
-  <rect width="640" height="160" rx="24" fill="#0f172a"/>
+  <rect width="508" height="160" rx="24" fill="#0f172a"/>
 
-  <!-- lightning bolt accent -->
-  <path d="M96 34 L60 84 H84 L72 126 L118 70 H92 Z" fill="url(#boltGradient)"/>
+  <g transform="translate(304.3 80)">
+    <!-- lightning bolt accent -->
+    <path d="M-224 -46 L-260 4 L-236 4 L-248 46 L-202 -10 L-228 -10 Z" fill="url(#boltGradient)"/>
 
-  <text x="148" y="102" font-family="'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif" font-size="60" font-weight="800" letter-spacing="-1.5">
-    <tspan fill="#f8fafc">Study</tspan><tspan fill="url(#wordGradient)">Wars</tspan>
-  </text>
+    <text x="-182" y="22" text-anchor="start"
+          font-family="Arial Black, 'Arial Bold', Arial, 'Segoe UI', system-ui, -apple-system, Helvetica, sans-serif"
+          font-size="60" font-weight="900" letter-spacing="-1"
+          stroke-width="1.5" paint-order="stroke fill" stroke-linejoin="round">
+      <tspan fill="#f8fafc" stroke="#f8fafc">Study</tspan><tspan fill="url(#wordGradient)" stroke="#a78bfa">Wars</tspan>
+    </text>
+  </g>
 </svg>
