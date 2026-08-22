@@ -1,9 +1,9 @@
 <div align="center">
   <img src="docs/brand/logo.svg" alt="StudyWars" width="420" />
 
-  **Turn your notes into a live, multiplayer quiz — in seconds.**
+  **Turn your notes into a live, multiplayer quiz in seconds.**
 
-  Upload a PDF or paste your notes, let Claude write the questions, and host a Kahoot-style
+  Upload a PDF or paste your notes, let AI write the questions, and host a Kahoot style
   game your friends can join from their phones.
 
   [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -44,7 +44,7 @@ flowchart LR
 ```
 
 1. **Host uploads a PDF or pastes notes.**
-2. **Claude reads the content** and generates multiple-choice questions automatically.
+2. **AI reads the content** and generates multiple choice questions automatically.
 3. **Host starts a live game room** and shares a short join code.
 4. **Players join** from their phones or laptops — no account needed.
 5. **Everyone answers in real time**, and the leaderboard updates after every question.
@@ -68,7 +68,7 @@ flowchart LR
 |---|---|---|
 | ![Join a quiz](docs/screenshots/join-quiz.jpg) | ![Host lobby with a player joined](docs/screenshots/host-lobby.jpg) | ![Live question on the host screen](docs/screenshots/host-live-question.jpg) |
 
-| Player answering | Reveal + leaderboard | Final results |
+| Player answering | leaderboard | Final results |
 |---|---|---|
 | ![Player answer options](docs/screenshots/player-answer-options.jpg) | ![Reveal screen with leaderboard](docs/screenshots/host-reveal.jpg) | ![Final results screen](docs/screenshots/final-results.jpg) |
 
@@ -109,7 +109,7 @@ flowchart TB
     Join <-- "join / answer" --> WSPlayer --> Rooms
 ```
 
-The frontend never talks to Claude directly — the backend generates the questions, creates the
+The frontend never talks to Claude directly, the backend generates the questions, creates the
 room, and then fans out live game state to every connected socket via the `Room` object in
 `app/rooms.py`.
 
