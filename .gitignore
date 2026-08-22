@@ -1,7 +1,7 @@
 # Python
 server/venv/
 server/__pycache__/
-server/uvicorn.log
+server/uvicorn*.log
 **/__pycache__/
 *.pyc
 server/.env
