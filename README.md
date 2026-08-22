@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/brand/logo.svg" alt="StudyWars" width="760" />
+  <img src="docs/brand/logo.svg" alt="StudyWars" width="880" />
 
   **Turn your notes into a live, multiplayer quiz in seconds.**
 
