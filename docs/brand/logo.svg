@@ -1,0 +1,22 @@
+<svg width="640" height="160" viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StudyWars">
+  <title>StudyWars</title>
+  <defs>
+    <linearGradient id="wordGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="boltGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="640" height="160" rx="24" fill="#0f172a"/>
+
+  <!-- lightning bolt accent -->
+  <path d="M96 34 L60 84 H84 L72 126 L118 70 H92 Z" fill="url(#boltGradient)"/>
+
+  <text x="148" y="102" font-family="'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif" font-size="60" font-weight="800" letter-spacing="-1.5">
+    <tspan fill="#f8fafc">Study</tspan><tspan fill="url(#wordGradient)">Wars</tspan>
+  </text>
+</svg>

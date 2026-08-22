@@ -1,7 +1,5 @@
 <div align="center">
-  <img src="client/src/assets/hero.png" alt="StudyWars logo" width="160" />
-
-  # StudyWars
+  <img src="docs/brand/logo.svg" alt="StudyWars" width="420" />
 
   **Turn your notes into a live, multiplayer quiz — in seconds.**
 
