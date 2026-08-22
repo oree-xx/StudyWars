@@ -62,15 +62,15 @@ flowchart LR
 
 | Home | Host setup | Review questions |
 |:---:|:---:|:---:|
-| ![Home screen](docs/screenshots/home.jpg) | ![Host setup form](docs/screenshots/host-setup.jpg) | ![Review generated questions](docs/screenshots/question-review.jpg) |
+| <img src="docs/screenshots/home.jpg" width="260" alt="Home screen"> | <img src="docs/screenshots/host-setup.jpg" width="260" alt="Host setup form"> | <img src="docs/screenshots/question-review.jpg" width="260" alt="Review generated questions"> |
 
 | Join a quiz | Host lobby | Live question |
 |:---:|:---:|:---:|
-| ![Join a quiz](docs/screenshots/join-quiz.jpg) | ![Host lobby with a player joined](docs/screenshots/host-lobby.jpg) | ![Live question on the host screen](docs/screenshots/host-live-question.jpg) |
+| <img src="docs/screenshots/join-quiz.jpg" width="260" alt="Join a quiz"> | <img src="docs/screenshots/host-lobby.jpg" width="260" alt="Host lobby with a player joined"> | <img src="docs/screenshots/host-live-question.jpg" width="260" alt="Live question on the host screen"> |
 
 | Player answering | leaderboard | Final results |
 |:---:|:---:|:---:|
-| ![Player answer options](docs/screenshots/player-answer-options.jpg) | ![Reveal screen with leaderboard](docs/screenshots/host-reveal.jpg) | ![Final results screen](docs/screenshots/final-results.jpg) |
+| <img src="docs/screenshots/player-answer-options.jpg" width="260" alt="Player answer options"> | <img src="docs/screenshots/host-reveal.jpg" width="260" alt="Reveal screen with leaderboard"> | <img src="docs/screenshots/final-results.jpg" width="260" alt="Final results screen"> |
 
 ## Tech stack
 
