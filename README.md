@@ -38,7 +38,7 @@
 
 ```mermaid
 flowchart LR
-    A["📄 Host uploads<br/>PDF or notes"] --> B["🤖 Claude generates<br/>multiple-choice questions"]
+    A["📄 Host uploads<br/>PDF or notes"] --> B["🤖 LLM generates<br/>multiple-choice questions"]
     B --> C["🎮 Host opens a<br/>live game room"]
     C --> D["📱 Players join<br/>with a room code"]
     D --> E["⚡ Real-time quiz<br/>+ live leaderboard"]
@@ -94,19 +94,19 @@ flowchart TB
         WSHost["/ws/host/{room_code}"]
         WSPlayer["/ws/player/{room_code}"]
         Rooms["Room manager<br/>(in-memory state + scoring)"]
-        AI["Claude integration"]
+        AI["LLM integration"]
     end
 
-    Claude[("LLM API")]
+    LLM[("LLM API")]
 
     Host -- "upload PDF / notes" --> HTTP
-    HTTP -- "generate_questions()" --> AI --> Claude
+    HTTP -- "generate_questions()" --> AI --> LLM
     Host -- "create room" --> HTTP --> Rooms
     Host <-- "start / next / reveal" --> WSHost --> Rooms
     Join <-- "join / answer" --> WSPlayer --> Rooms
 ```
 
-The frontend never talks to Claude directly, the backend generates the questions, creates the
+The frontend never talks to the LLM directly. The backend generates the questions, creates the
 room, and then fans out live game state to every connected socket via the `Room` object in
 `app/rooms.py`.
 
@@ -144,7 +144,7 @@ copy .env.example .env         # Windows
 ```
 
 Open `server/.env` and paste in your `ANTHROPIC_API_KEY`.
-Optionally set `ANTHROPIC_MODEL` to choose another supported Claude model; the default is
+Optionally set `ANTHROPIC_MODEL` to choose another supported model; the default is
 `claude-sonnet-4-6`. Quiz generation uses the async Messages API with a forced quiz tool,
 then validates the returned questions before displaying them for review.
 
@@ -249,7 +249,7 @@ server/                FastAPI backend
   app/
     main.py             App entrypoint, CORS, router wiring
     config.py            Settings (.env loading)
-    ai.py                Claude integration (question generation)
+    ai.py                LLM integration (question generation)
     pdf_utils.py          PDF text extraction
     models.py             Question schema
     rooms.py               In-memory game/room state + scoring
