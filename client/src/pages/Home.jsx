@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { SiteHeader, SiteFooter } from '../components/AppShell'
+import { SiteHeader } from '../components/AppShell'
 
 export default function Home() {
   return <div className="app-shell">
@@ -33,6 +33,5 @@ export default function Home() {
         </div>
       </section>
     </main>
-    <SiteFooter />
   </div>
 }

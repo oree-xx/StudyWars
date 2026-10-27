@@ -9,10 +9,6 @@ export function SiteHeader({ roomCode }) {
   )
 }
 
-export function SiteFooter() {
-  return <footer className="site-footer"><span className="footer-note"><span className="small-dot" /> Made for learning together</span></footer>
-}
-
 export default function AppShell({ children, compact = false, roomCode, label }) {
-  return <div className="app-shell"><SiteHeader roomCode={roomCode} /><main className={`page-content${compact ? ' compact' : ''}`} aria-label={label}>{children}</main><SiteFooter /></div>
+  return <div className="app-shell"><SiteHeader roomCode={roomCode} /><main className={`page-content${compact ? ' compact' : ''}`} aria-label={label}>{children}</main></div>
 }
