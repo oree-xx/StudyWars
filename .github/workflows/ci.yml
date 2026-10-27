@@ -83,9 +83,11 @@ jobs:
           --publish 127.0.0.1:8000:8000 --env PORT=8000 studywars:ci
       - name: Check health and frontend routes
         run: |
-          curl --fail --silent --show-error --retry 12 --retry-connrefused \
-            --retry-delay 5 --retry-max-time 60 http://127.0.0.1:8000/health
-          for route in / /host /join; do
+          # Docker can accept connections before Uvicorn is ready, then reset them.
+          curl --fail --silent --show-error --retry 12 --retry-all-errors \
+            --connect-timeout 2 --max-time 5 --retry-delay 5 --retry-max-time 60 \
+            http://127.0.0.1:8000/health
+          for route in / /host /join /play; do
             curl --fail --silent --show-error "http://127.0.0.1:8000${route}" \
               | grep -q '<div id="root"></div>'
           done
