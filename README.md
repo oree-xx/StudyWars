@@ -22,7 +22,7 @@
 
 - [How it works](#how-it-works)
 - [Features](#features)
-- [Screenshots](#screenshots)
+- [Demo](#demo)
 - [Tech stack](#tech-stack)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
@@ -62,7 +62,7 @@ flowchart LR
 - 🔄 **Connection recovery** — automatically reconnect after a dropped connection, or refresh the same tab to restore your room, score, and accepted answer.
 - ✨ **Refreshed interface** — responsive host and player screens, lettered answer cards, progress indicators, connection status, and clear answer confirmations.
 
-## Screenshots
+## Demo
 
 | Home | Live player view |
 |:---:|:---:|
