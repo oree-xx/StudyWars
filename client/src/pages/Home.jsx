@@ -25,7 +25,7 @@ export default function Home() {
         </div>
       </section>
       <section className="how-it-works" aria-labelledby="how-heading">
-        <div className="section-topline"><h2 id="how-heading">From notes to “one more round.”</h2><span>Three steps. Everyone’s in.</span></div>
+        <div className="section-topline"><h2 id="how-heading">From notes to “one more round.”</h2></div>
         <div className="steps-grid">
           <div className="how-step"><span className="step-icon">01</span><div><h3>Bring your notes</h3><p>Paste your study notes or upload a PDF. We’ll turn the key ideas into questions.</p></div></div>
           <div className="how-step"><span className="step-icon">02</span><div><h3>Gather your people</h3><p>Review your quiz, open a room, and share the code. Any browser can join.</p></div></div>
