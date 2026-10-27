@@ -18,7 +18,6 @@ export default function Join() {
       <div><label className="field-label" htmlFor="room-code">Room code</label><input id="room-code" className="text-input join-code-input" value={roomCode} onChange={event => setRoomCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} maxLength={6} placeholder="ABCDEF" autoComplete="off" autoCapitalize="characters" spellCheck={false} required aria-describedby="code-help" /><p id="code-help" className="helper">You’ll find this on the host’s screen.</p></div>
       <div><label className="field-label" htmlFor="player-name">Your name</label><input id="player-name" className="text-input" value={name} onChange={event => setName(event.target.value)} maxLength={20} placeholder="What should we call you?" autoComplete="nickname" required /></div>
       <button type="submit" className="btn btn-primary full-width" disabled={!canSubmit}>Let’s play <span aria-hidden="true">→</span></button>
-      <p className="muted small centered">No account needed. Bring your best guesses.</p>
     </form>
   </AppShell>
 }
