@@ -11,7 +11,7 @@
   [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-  [![LLM API](https://img.shields.io/badge/AI-LLM-D97757)](https://www.anthropic.com/)
+  [![LLM API](https://img.shields.io/badge/AI-LLM-D97757)](https://ai.google.dev/gemini-api/docs)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
@@ -89,7 +89,7 @@ flowchart LR
 
 | Layer | Tech |
 |---|---|
-| Backend | Python, [FastAPI](https://fastapi.tiangolo.com/), native WebSockets, [LLM API](https://www.anthropic.com/) |
+| Backend | Python, [FastAPI](https://fastapi.tiangolo.com/), native WebSockets, [LLM API](https://ai.google.dev/gemini-api/docs) |
 | Frontend | [React](https://react.dev/) (Vite), [React Router](https://reactrouter.com/), [Tailwind CSS](https://tailwindcss.com/) |
 | PDF parsing | [pypdf](https://pypi.org/project/pypdf/) |
 | Realtime | WebSockets (host + player channels per room) |
@@ -136,7 +136,7 @@ state. Browser reconnection restores a session only while its original room stil
 
 - [Python 3.11 or 3.12](https://www.python.org/downloads/) recommended for the pinned backend dependencies
 - [Node.js 20.19+ or 22.12+](https://nodejs.org/) and npm, as required by [Vite](https://vite.dev/guide/)
-- An [LLM API key](https://console.anthropic.com/)
+- An [LLM API key](https://aistudio.google.com/apikey) for the configured provider
 
 ### 1. Clone the repo
 
@@ -159,10 +159,14 @@ copy .env.example .env         # Windows
 # cp .env.example .env         # macOS/Linux
 ```
 
-Open `server/.env` and paste in your `ANTHROPIC_API_KEY`.
-Optionally set `ANTHROPIC_MODEL` to choose another supported model; the default is
-`claude-sonnet-4-6`. Quiz generation uses the async Messages API with a forced quiz tool,
-then validates the returned questions before displaying them for review.
+Open `server/.env`, keep `LLM_PROVIDER=gemini`, and paste your Google AI Studio key into
+`GEMINI_API_KEY`. The default model is `gemini-3.5-flash-lite`; set `GEMINI_MODEL` to use
+another supported model. Requests use structured JSON output, then validate every
+question and the requested count before displaying the quiz for review.
+
+To use the alternative provider, set `LLM_PROVIDER=anthropic`, provide `ANTHROPIC_API_KEY`,
+and optionally override `ANTHROPIC_MODEL` (default: `claude-sonnet-4-6`). Only the selected
+provider receives the notes; the app does not fall back to another provider automatically.
 
 Run the backend:
 
@@ -193,7 +197,7 @@ pages, API requests, and WebSocket connections share one HTTPS address.
 
 1. Sign in to [Render](https://dashboard.render.com/) and choose **New > Blueprint**.
 2. Connect your GitHub account and select `oree-xx/StudyWars`, branch `master`.
-3. Review the free service in `render.yaml` and enter your `ANTHROPIC_API_KEY` when prompted.
+3. Review the free service in `render.yaml` and enter your `GEMINI_API_KEY` when prompted.
    This key belongs in Render's environment settings, never in the repository or frontend.
 4. Deploy the Blueprint, then open the service's `onrender.com` address.
 
@@ -205,8 +209,8 @@ alone does not create a live deployment. See [Render's deployment docs](https://
 The [free service](https://render.com/docs/free) sleeps after 15 minutes without inbound
 traffic and can take about a minute to wake. Rooms and scores are kept in memory, so
 sleep, restarts, and redeploys clear active games. Keep one service instance and one
-backend worker; the container already starts one worker. LLM API usage is billed
-separately by your provider.
+backend worker; the container already starts one worker. LLM API usage has its own
+provider quotas and pricing, separate from hosting.
 
 To check the same production image locally, run from the repository root:
 
@@ -247,9 +251,9 @@ pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
 ```
 
-The tests cover the pinned Anthropic SDK with simulated HTTP responses, question validation,
-WebSocket recovery, scoring, deadlines, and complete host/player game flows. They do not call
-the live AI API or spend credits.
+The tests simulate both LLM providers and cover structured output, question validation,
+provider errors, WebSocket recovery, scoring, deadlines, and complete host/player game flows.
+They do not call the live LLM APIs or spend credits.
 
 Run frontend checks from `client/`:
 
