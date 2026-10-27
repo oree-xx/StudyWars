@@ -11,7 +11,7 @@
   [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-  [![Claude API](https://img.shields.io/badge/AI-Claude-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com/)
+  [![LLM API](https://img.shields.io/badge/AI-LLM-D97757)](https://www.anthropic.com/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
@@ -52,7 +52,7 @@ flowchart LR
 
 ## Features
 
-- 🧠 **AI-generated quizzes** — drop in a PDF or raw notes, get 1–20 multiple-choice questions back, powered by the Claude API.
+- 🧠 **AI-generated quizzes** — drop in a PDF or raw notes, get 1–20 multiple-choice questions back, powered by the LLM API.
 - ⚡ **Real-time gameplay** — rooms, questions, reveals, and scoring are all pushed live over WebSockets.
 - 🏆 **Live leaderboard** — scores update after every question so players can see where they stand.
 - 📱 **No install for players** — join from any browser with a room code and a name.
@@ -72,7 +72,7 @@ flowchart LR
 
 | Layer | Tech |
 |---|---|
-| Backend | Python, [FastAPI](https://fastapi.tiangolo.com/), native WebSockets, [Anthropic Claude API](https://www.anthropic.com/) |
+| Backend | Python, [FastAPI](https://fastapi.tiangolo.com/), native WebSockets, [LLM API](https://www.anthropic.com/) |
 | Frontend | [React](https://react.dev/) (Vite), [React Router](https://reactrouter.com/), [Tailwind CSS](https://tailwindcss.com/) |
 | PDF parsing | [pypdf](https://pypi.org/project/pypdf/) |
 | Realtime | WebSockets (host + player channels per room) |
@@ -96,7 +96,7 @@ flowchart TB
         AI["Claude integration"]
     end
 
-    Claude[("Anthropic<br/>Claude API")]
+    Claude[("LLM API")]
 
     Host -- "upload PDF / notes" --> HTTP
     HTTP -- "generate_questions()" --> AI --> Claude
@@ -119,7 +119,7 @@ state. Browser reconnection restores a session only while its original room stil
 
 - [Python 3.11 or 3.12](https://www.python.org/downloads/) recommended for the pinned backend dependencies
 - [Node.js 20.19+ or 22.12+](https://nodejs.org/) and npm, as required by [Vite](https://vite.dev/guide/)
-- A [Claude API key](https://console.anthropic.com/)
+- An [LLM API key](https://console.anthropic.com/)
 
 ### 1. Clone the repo
 
