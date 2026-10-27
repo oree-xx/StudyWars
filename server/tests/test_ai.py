@@ -26,6 +26,9 @@ def response_for(payload, stop_reason="tool_use"):
 
 
 class GenerationTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.enterContext(patch.object(ai.settings, "llm_provider", "anthropic"))
+
     async def test_pinned_sdk_can_generate_using_forced_tool(self):
         requests = []
 
