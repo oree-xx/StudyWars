@@ -12,8 +12,6 @@ from app.models import Question
 TIME_LIMIT_SECONDS = 20
 BASE_POINTS = 1000
 MIN_POINTS = 100
-
-# Avoids visually ambiguous characters (0/O, 1/I) so codes are easy to read aloud/type.
 ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
@@ -24,7 +22,7 @@ def _new_room_code() -> str:
 def _points_for(is_correct: bool, elapsed: float, time_limit: float) -> int:
     if not is_correct:
         return 0
-    fraction_remaining = max(0.0, 1 - (elapsed / time_limit))
+    fraction_remaining = max(0.0, min(1.0, 1 - elapsed / time_limit))
     return int(MIN_POINTS + (BASE_POINTS - MIN_POINTS) * fraction_remaining)
 
 
@@ -32,13 +30,17 @@ def _points_for(is_correct: bool, elapsed: float, time_limit: float) -> int:
 class Player:
     id: str
     name: str
-    websocket: WebSocket
+    websocket: Optional[WebSocket] = None
+    token: str = ""
     score: int = 0
     # question index -> (option_index, points_earned)
     answers: Dict[int, Tuple[int, int]] = field(default_factory=dict)
 
     def to_public(self) -> dict:
-        return {"id": self.id, "name": self.name, "score": self.score}
+        return {
+            "id": self.id, "name": self.name, "score": self.score,
+            "connected": self.websocket is not None,
+        }
 
 
 @dataclass
@@ -48,10 +50,12 @@ class Room:
     questions: List[Question]
     host_ws: Optional[WebSocket] = None
     players: Dict[str, Player] = field(default_factory=dict)
-    state: str = "lobby"  # lobby | question | reveal | ended
+    state: str = "lobby"
     current_index: int = -1
     question_started_at: float = 0.0
     _timer_task: Optional[asyncio.Task] = None
+    # Serialize game transitions, joins and answer acceptance across sockets.
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def leaderboard(self) -> List[dict]:
         ranked = sorted(self.players.values(), key=lambda p: p.score, reverse=True)
@@ -62,111 +66,176 @@ class Room:
             return self.questions[self.current_index]
         return None
 
+    def player_with_token(self, token: str) -> Optional[Player]:
+        return next((p for p in self.players.values() if secrets.compare_digest(p.token, token)), None)
+
+    def answered_count(self) -> int:
+        return sum(self.current_index in player.answers for player in self.players.values())
+
+    def question_payload(self) -> Optional[dict]:
+        question = self.current_question()
+        if question is None:
+            return None
+        server_time = time.time() * 1000
+        remaining = max(0.0, TIME_LIMIT_SECONDS - (time.monotonic() - self.question_started_at))
+        return {
+            "type": "question", "index": self.current_index, "total": len(self.questions),
+            "question": question.question, "options": question.options,
+            "time_limit": TIME_LIMIT_SECONDS,
+            "ends_at": server_time + remaining * 1000, "server_time": server_time,
+        }
+
+    def reveal_payload(self) -> Optional[dict]:
+        question = self.current_question()
+        if question is None or self.state != "reveal":
+            return None
+        return {
+            "type": "reveal", "correct_index": question.correct_index,
+            "explanation": question.explanation, "leaderboard": self.leaderboard(),
+        }
+
+    def snapshot(self, player: Optional[Player] = None) -> dict:
+        answer = player.answers.get(self.current_index) if player else None
+        snapshot = {
+            "type": "room_state", "room_code": self.code, "state": self.state,
+            "players": self.leaderboard(), "question": self.question_payload(),
+            "selected_option": answer[0] if answer else None,
+            "reveal": self.reveal_payload(), "leaderboard": self.leaderboard(),
+            "answered_count": self.answered_count(), "total_players": len(self.players),
+        }
+        if player:
+            snapshot["player_id"] = player.id
+        return snapshot
+
     def _cancel_timer(self):
-        """Cancel the pending question timer, guarding against self-cancellation
-        when this is called from inside the timer's own coroutine."""
         task = self._timer_task
         self._timer_task = None
         if task and task is not asyncio.current_task():
             task.cancel()
 
-    async def broadcast(self, message: dict):
-        dead_player_ids = []
-        for player in list(self.players.values()):
-            try:
-                await player.websocket.send_json(message)
-            except Exception:
-                dead_player_ids.append(player.id)
-        for pid in dead_player_ids:
-            self.players.pop(pid, None)
+    async def _send_player(self, player: Player, message: dict):
+        socket = player.websocket
+        if socket is None:
+            return
+        try:
+            await socket.send_json(message)
+        except Exception:
+            if player.websocket is socket:
+                player.websocket = None
 
-        if self.host_ws is not None:
-            try:
-                await self.host_ws.send_json(message)
-            except Exception:
+    async def _send_host(self, message: dict):
+        socket = self.host_ws
+        if socket is None:
+            return
+        try:
+            await socket.send_json(message)
+        except Exception:
+            if self.host_ws is socket:
                 self.host_ws = None
 
-    async def start_game(self):
-        if self.state != "lobby" or not self.questions:
-            return
-        await self.advance_question()
+    async def broadcast(self, message: dict):
+        await asyncio.gather(
+            *(self._send_player(player, message) for player in list(self.players.values())),
+            self._send_host(message),
+        )
 
-    async def advance_question(self):
+    async def start_game(self, websocket: Optional[WebSocket] = None):
+        async with self.lock:
+            if websocket is not None and self.host_ws is not websocket:
+                return
+            if self.state == "lobby" and self.questions:
+                await self._advance_question()
+
+    async def advance_question(self, websocket: Optional[WebSocket] = None):
+        async with self.lock:
+            if websocket is not None and self.host_ws is not websocket:
+                return
+            if self.state == "reveal":
+                await self._advance_question()
+
+    async def _advance_question(self):
         self._cancel_timer()
         self.current_index += 1
-
-        question = self.current_question()
-        if question is None:
+        if self.current_question() is None:
             self.state = "ended"
             await self.broadcast({"type": "game_over", "leaderboard": self.leaderboard()})
             return
-
         self.state = "question"
         self.question_started_at = time.monotonic()
-        await self.broadcast(
-            {
-                "type": "question",
-                "index": self.current_index,
-                "total": len(self.questions),
-                "question": question.question,
-                "options": question.options,
-                "time_limit": TIME_LIMIT_SECONDS,
-            }
-        )
-        self._timer_task = asyncio.create_task(self._question_timer())
+        self._timer_task = asyncio.create_task(self._question_timer(self.current_index))
+        await self.broadcast(self.question_payload())
 
-    async def _question_timer(self):
+    async def _question_timer(self, question_index: int):
         try:
-            await asyncio.sleep(TIME_LIMIT_SECONDS)
-            await self.reveal_answer()
+            remaining = max(0.0, TIME_LIMIT_SECONDS - (time.monotonic() - self.question_started_at))
+            await asyncio.sleep(remaining)
+            async with self.lock:
+                if self.current_index == question_index:
+                    await self._reveal_answer()
         except asyncio.CancelledError:
             pass
 
-    async def submit_answer(self, player_id: str, option_index: int):
-        if self.state != "question":
-            return
-        player = self.players.get(player_id)
-        if player is None or self.current_index in player.answers:
-            return
+    async def submit_answer(self, player_id: str, option_index: int, question_index: int, websocket: Optional[WebSocket] = None):
+        async with self.lock:
+            player = self.players.get(player_id)
+            if player is None:
+                return
+            if websocket is not None and player.websocket is not websocket:
+                return
 
-        elapsed = min(time.monotonic() - self.question_started_at, TIME_LIMIT_SECONDS)
-        question = self.current_question()
-        is_correct = option_index == question.correct_index
-        points = _points_for(is_correct, elapsed, TIME_LIMIT_SECONDS)
+            async def reject(reason):
+                await self._send_player(player, {
+                    "type": "answer_rejected", "question_index": question_index, "reason": reason,
+                })
 
-        player.answers[self.current_index] = (option_index, points)
-        player.score += points
+            if type(question_index) is not int or question_index != self.current_index:
+                await reject("That question is no longer active.")
+                return
+            if type(option_index) is not int or not 0 <= option_index < 4:
+                await reject("Choose one of the four answers.")
+                return
+            # Retries return the accepted receipt without rescoring.
+            previous = player.answers.get(question_index)
+            if previous is not None:
+                await self._send_player(player, {
+                    "type": "answer_ack", "question_index": question_index,
+                    "option_index": previous[0],
+                })
+                return
+            if self.state != "question":
+                await reject("Answers are closed for this question.")
+                return
+            elapsed = time.monotonic() - self.question_started_at
+            if elapsed >= TIME_LIMIT_SECONDS:
+                await reject("Time is up for this question.")
+                await self._reveal_answer()
+                return
 
-        if self.host_ws is not None:
-            answered_count = sum(1 for p in self.players.values() if self.current_index in p.answers)
-            try:
-                await self.host_ws.send_json(
-                    {
-                        "type": "player_answered",
-                        "answered_count": answered_count,
-                        "total_players": len(self.players),
-                    }
-                )
-            except Exception:
-                self.host_ws = None
+            points = _points_for(option_index == self.current_question().correct_index, elapsed, TIME_LIMIT_SECONDS)
+            player.answers[question_index] = (option_index, points)
+            player.score += points
+            await self._send_player(player, {
+                "type": "answer_ack", "question_index": question_index, "option_index": option_index,
+            })
+            await self._send_host({
+                "type": "player_answered", "answered_count": self.answered_count(),
+                "total_players": len(self.players),
+            })
+            if self.players and self.answered_count() == len(self.players):
+                await self._reveal_answer()
 
-        if self.players and all(self.current_index in p.answers for p in self.players.values()):
-            await self.reveal_answer()
+    async def reveal_answer(self, websocket: Optional[WebSocket] = None):
+        async with self.lock:
+            if websocket is not None and self.host_ws is not websocket:
+                return
+            await self._reveal_answer()
 
-    async def reveal_answer(self):
+    async def _reveal_answer(self):
         if self.state != "question":
             return
         self._cancel_timer()
         self.state = "reveal"
-        question = self.current_question()
-        await self.broadcast(
-            {
-                "type": "reveal",
-                "correct_index": question.correct_index,
-                "explanation": question.explanation,
-                "leaderboard": self.leaderboard(),
-            }
-        )
+        await self.broadcast(self.reveal_payload())
 
 
 class RoomManager:

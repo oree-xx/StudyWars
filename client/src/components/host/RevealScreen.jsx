@@ -1,34 +1,10 @@
 import Leaderboard from '../Leaderboard'
-import { OPTION_COLORS } from '../../lib/optionColors'
 
-function RevealScreen({ question, reveal, isLastQuestion, onNext }) {
+export default function RevealScreen({ question, reveal, isLastQuestion, onNext, connected = true }) {
   const correctText = question?.options?.[reveal.correct_index]
-
-  return (
-    <div className="mt-6 space-y-8">
-      <div className="text-center space-y-2">
-        <p className="text-emerald-400 font-semibold">Correct Answer</p>
-        {correctText && (
-          <p
-            className={`${OPTION_COLORS[reveal.correct_index]} inline-block rounded-lg px-4 py-2 font-semibold`}
-          >
-            {correctText}
-          </p>
-        )}
-        <p className="text-slate-400">{reveal.explanation}</p>
-      </div>
-
-      <Leaderboard players={reveal.leaderboard} />
-
-      <button
-        type="button"
-        onClick={onNext}
-        className="w-full bg-indigo-500 hover:bg-indigo-400 rounded-xl px-6 py-4 font-semibold text-lg transition-colors"
-      >
-        {isLastQuestion ? 'Show Final Results' : 'Next Question'}
-      </button>
-    </div>
-  )
+  return <div className="stack">
+    <section className="card centered"><span className="correct-badge">✓ The correct answer</span><h1 className="reveal-answer">{correctText || `Option ${String.fromCharCode(65 + reveal.correct_index)}`}</h1><p className="muted">{reveal.explanation}</p></section>
+    <section className="card"><div className="roster-header"><h2>The leaderboard</h2><span className="badge">Round {(question?.index ?? 0) + 1}</span></div><Leaderboard players={reveal.leaderboard} /></section>
+    <button type="button" onClick={onNext} disabled={!connected} className="btn btn-primary full-width">{isLastQuestion ? 'See the final standings' : 'Next question'} <span aria-hidden="true">→</span></button>
+  </div>
 }
-
-export default RevealScreen

@@ -9,6 +9,6 @@ export function hostSocketUrl(roomCode, hostToken) {
   return wsUrl(`/ws/host/${roomCode}?token=${encodeURIComponent(hostToken)}`)
 }
 
-export function playerSocketUrl(roomCode, name) {
-  return wsUrl(`/ws/player/${roomCode}?name=${encodeURIComponent(name)}`)
+export function playerSocketUrl(roomCode, name, playerToken) {
+  return wsUrl(`/ws/player/${roomCode}?name=${encodeURIComponent(name)}&player_token=${encodeURIComponent(playerToken)}`)
 }

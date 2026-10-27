@@ -2,102 +2,42 @@ import { useState } from 'react'
 
 const NUM_QUESTIONS_OPTIONS = [3, 5, 8, 10]
 
-function SetupForm({ onGenerate, generating, error }) {
-  const [inputMode, setInputMode] = useState('notes') // 'notes' | 'file'
+export default function SetupForm({ onGenerate, generating, error }) {
+  const [inputMode, setInputMode] = useState('notes')
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState(null)
   const [numQuestions, setNumQuestions] = useState(5)
-
   const canSubmit = inputMode === 'notes' ? notes.trim().length > 0 : !!file
 
-  function handleSubmit(e) {
-    e.preventDefault()
-    if (!canSubmit) return
-    onGenerate({
-      notes: inputMode === 'notes' ? notes : undefined,
-      file: inputMode === 'file' ? file : undefined,
-      numQuestions,
-    })
+  function handleSubmit(event) {
+    event.preventDefault()
+    if (!canSubmit || generating) return
+    onGenerate({ notes: inputMode === 'notes' ? notes : undefined, file: inputMode === 'file' ? file : undefined, numQuestions })
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Host a Quiz</h1>
-        <p className="text-slate-400 mt-2">
-          Upload a PDF or paste your notes — AI will turn them into a live quiz.
-        </p>
+  return <>
+    <div className="step-strip" aria-label="Quiz setup steps"><span className="active">01 · Add your notes</span><span className="step-line" /><span>02 · Review</span><span className="step-line" /><span>03 · Go live</span></div>
+    <div className="page-heading"><p className="eyebrow">You bring the knowledge</p><h1>Let’s build your next battle.</h1><p className="muted">A chapter, a lecture, that page of revision notes. Turn it into a quiz your group will actually want to play.</p></div>
+    <form onSubmit={handleSubmit} className="card stack" aria-busy={generating}>
+      <div className="segmented" aria-label="Choose your study material">
+        <button type="button" aria-pressed={inputMode === 'notes'} onClick={() => setInputMode('notes')} disabled={generating}>≡ Paste notes</button>
+        <button type="button" aria-pressed={inputMode === 'file'} onClick={() => setInputMode('file')} disabled={generating}>↑ Upload a PDF</button>
       </div>
-
-      <div className="flex gap-2">
-        <TabButton active={inputMode === 'notes'} onClick={() => setInputMode('notes')}>
-          Paste Notes
-        </TabButton>
-        <TabButton active={inputMode === 'file'} onClick={() => setInputMode('file')}>
-          Upload PDF
-        </TabButton>
-      </div>
-
-      {inputMode === 'notes' ? (
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Paste your study notes here..."
-          rows={10}
-          className="w-full rounded-xl bg-slate-800 border border-slate-700 p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      ) : (
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="w-full rounded-xl bg-slate-800 border border-slate-700 p-4 text-white file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-white file:font-medium"
-        />
-      )}
-
-      <div>
-        <label className="block text-sm text-slate-400 mb-2">Number of questions</label>
-        <div className="flex gap-2">
-          {NUM_QUESTIONS_OPTIONS.map((n) => (
-            <button
-              type="button"
-              key={n}
-              onClick={() => setNumQuestions(n)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                numQuestions === n ? 'bg-indigo-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={!canSubmit || generating}
-        className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl px-6 py-4 font-semibold text-lg transition-colors"
-      >
-        {generating ? 'Generating questions…' : 'Generate Questions'}
-      </button>
+      {inputMode === 'notes' ? <div>
+        <label htmlFor="study-notes" className="field-label">Your study notes</label>
+        <textarea id="study-notes" className="text-input" value={notes} onChange={event => setNotes(event.target.value)} rows={8} placeholder="Start with what you’re learning. Paste your notes here…" disabled={generating} />
+        <div className="helper"><span>More context makes better questions.</span><span>{notes.length.toLocaleString()} characters</span></div>
+      </div> : <div className="upload-zone">
+        <div className="upload-icon" aria-hidden="true">↑</div>
+        <label className="field-label" htmlFor="study-pdf">Your notes, ready for their next chapter.</label>
+        <p className="muted small">Choose a PDF with selectable text.</p>
+        <input id="study-pdf" type="file" accept="application/pdf,.pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} disabled={generating} />
+        {file && <p className="small muted" style={{ marginTop: 12, overflowWrap: 'anywhere' }}>{file.name}</p>}
+      </div>}
+      <fieldset><legend className="field-label">How many questions?</legend><div className="count-pills">{NUM_QUESTIONS_OPTIONS.map(count => <button type="button" key={count} aria-pressed={numQuestions === count} onClick={() => setNumQuestions(count)} disabled={generating}>{count}</button>)}</div><p className="helper">20 seconds per question. Faster correct answers earn more points.</p></fieldset>
+      {error && <p className="error-notice" role="alert">{error}</p>}
+      <button type="submit" disabled={!canSubmit || generating} className="btn btn-primary full-width">{generating ? 'Building your questions…' : 'Generate my quiz'}<span aria-hidden="true">{generating ? '↻' : '✦'}</span></button>
+      <p className="muted small centered" role="status">{generating ? 'Finding the key ideas in your notes. This can take a moment.' : 'You’ll review every question before anyone joins.'}</p>
     </form>
-  )
+  </>
 }
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-        active ? 'bg-indigo-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-export default SetupForm

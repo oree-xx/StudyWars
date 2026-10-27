@@ -27,6 +27,7 @@
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
 - [Playing a game](#playing-a-game)
+- [Testing](#testing)
 - [API reference](#api-reference)
 - [Project structure](#project-structure)
 - [Roadmap](#roadmap)
@@ -57,20 +58,15 @@ flowchart LR
 - 📱 **No install for players** — join from any browser with a room code and a name.
 - 🎛️ **Host controls** — start the game, reveal answers, and advance questions on your own pace.
 - 🖥️ **Two synced views** — a big-screen host view for the room, and a lightweight player view for each device.
+- ⏱️ **Visible countdowns** — each question has a server-enforced 20-second limit. Correct answers earn up to 1,000 points, with more points for faster answers.
+- 🔄 **Connection recovery** — automatically reconnect after a dropped connection, or refresh the same tab to restore your room, score, and accepted answer.
+- ✨ **Refreshed interface** — responsive host and player screens, lettered answer cards, progress indicators, connection status, and clear answer confirmations.
 
 ## Screenshots
 
-| Home | Host setup | Review questions |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/home.jpg" width="260" alt="Home screen"> | <img src="docs/screenshots/host-setup.jpg" width="260" alt="Host setup form"> | <img src="docs/screenshots/question-review.jpg" width="260" alt="Review generated questions"> |
-
-| Join a quiz | Host lobby | Live question |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/join-quiz.jpg" width="260" alt="Join a quiz"> | <img src="docs/screenshots/host-lobby.jpg" width="260" alt="Host lobby with a player joined"> | <img src="docs/screenshots/host-live-question.jpg" width="260" alt="Live question on the host screen"> |
-
-| Player answering | leaderboard | Final results |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/player-answer-options.jpg" width="260" alt="Player answer options"> | <img src="docs/screenshots/host-reveal.jpg" width="260" alt="Reveal screen with leaderboard"> | <img src="docs/screenshots/final-results.jpg" width="260" alt="Final results screen"> |
+| Home | Live player view |
+|:---:|:---:|
+| <img src="docs/screenshots/home-updated.png" width="480" alt="Redesigned StudyWars homepage"> | <img src="docs/screenshots/player-updated.png" width="480" alt="Player question with countdown and answer options"> |
 
 ## Tech stack
 
@@ -113,12 +109,16 @@ The frontend never talks to Claude directly, the backend generates the questions
 room, and then fans out live game state to every connected socket via the `Room` object in
 `app/rooms.py`.
 
+Rooms and scores live in one server process. Run a single backend worker: a server restart
+(including a development reload) clears every room, and multiple workers do not share game
+state. Browser reconnection restores a session only while its original room still exists.
+
 ## Getting started
 
 ### Prerequisites
 
-- [Python 3.11+](https://www.python.org/downloads/)
-- [Node.js 18+](https://nodejs.org/) and npm
+- [Python 3.11 or 3.12](https://www.python.org/downloads/) recommended for the pinned backend dependencies
+- [Node.js 20.19+ or 22.12+](https://nodejs.org/) and npm, as required by [Vite](https://vite.dev/guide/)
 - A [Claude API key](https://console.anthropic.com/)
 
 ### 1. Clone the repo
@@ -143,6 +143,9 @@ copy .env.example .env         # Windows
 ```
 
 Open `server/.env` and paste in your `ANTHROPIC_API_KEY`.
+Optionally set `ANTHROPIC_MODEL` to choose another supported Claude model; the default is
+`claude-sonnet-4-6`. Quiz generation uses the async Messages API with a forced quiz tool,
+then validates the returned questions before displaying them for review.
 
 Run the backend:
 
@@ -174,6 +177,46 @@ backend automatically — no extra config needed.
    name.
 5. Once everyone's in, the host starts the game — questions, reveals, and the leaderboard all
    sync live to every player.
+6. Answer before the countdown reaches zero. The server confirms each accepted answer; a
+   correct answer scores 100–1,000 points depending on speed. The host can reveal early,
+   and the answer is revealed automatically when time expires or everyone has answered.
+
+Host credentials and player tokens are stored in the current tab's `sessionStorage`. A
+refresh in that tab restores the current stage and remaining time; an automatic reconnect
+also preserves accepted answers and scores. Closing the tab or clearing its storage loses
+those credentials. Players joining with a new session must wait for a new game if the quiz
+has already started. If browser storage is unavailable, refresh recovery is unavailable.
+
+## Testing
+
+With the backend virtual environment activated, run from `server/`:
+
+```bash
+pip install -r requirements-dev.txt
+python -m unittest discover -s tests -v
+```
+
+The tests cover the pinned Anthropic SDK with simulated HTTP responses, question validation,
+WebSocket recovery, scoring, deadlines, and complete host/player game flows. They do not call
+the live AI API or spend credits.
+
+Run frontend checks from `client/`:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+For browser QA without an API key, run the sample-question backend from `server/`:
+
+```bash
+python -m uvicorn tests.browser_fixture:app --port 8000
+```
+
+Start `npm run dev` in `client/` as usual. This fixture returns sample biology questions
+regardless of the supplied notes, so it is for local browser testing only. Use `app.main:app`
+for the real application; do not deploy the fixture.
 
 ## API reference
 
@@ -190,7 +233,13 @@ backend automatically — no extra config needed.
 | Path | Role | Notes |
 |---|---|---|
 | `/ws/host/{room_code}?token=...` | Host | Authenticated with the room's `host_token`. Sends `start_game`, `next_question`, `reveal_now`; receives room/player state. |
-| `/ws/player/{room_code}?name=...` | Player | Joins the lobby by name. Sends `answer` with an `option_index`; receives live question, reveal, and leaderboard updates. |
+| `/ws/player/{room_code}?name=...&player_token=...` | Player | Joins the lobby with a name and an unguessable client-generated token. The same token resumes the player in any game stage. Sends `answer` with `question_index` and `option_index`; receives `answer_ack` after acceptance. |
+
+Both sockets first receive a `room_state` snapshot and support `ping`/`pong` heartbeats.
+Question events include `time_limit`, `ends_at`, and `server_time` (timestamps in milliseconds)
+so countdowns can resume without granting extra time. Close codes `4001`, `4002`, `4003`, and
+`4004` indicate invalid credentials, a replaced connection, a game already in progress for a
+new player, and a missing room respectively; these are terminal rather than retryable errors.
 
 ## Project structure
 
@@ -227,7 +276,6 @@ client/                React frontend
 
 - [ ] Persist rooms/scores beyond process restarts
 - [ ] Support image-based question generation (diagrams, slides)
-- [ ] Per-question timers and speed bonuses
 - [ ] Exportable results (CSV / share link)
 
 ## Contributing

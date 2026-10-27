@@ -1,37 +1,12 @@
+import Countdown from '../Countdown'
 import { OPTION_COLORS } from '../../lib/optionColors'
 
-function LiveQuestion({ question, answeredCount, totalPlayers, onRevealNow }) {
-  return (
-    <div className="mt-6 space-y-8">
-      <div className="text-center">
-        <p className="text-slate-400">
-          Question {question.index + 1} of {question.total}
-        </p>
-        <h2 className="text-2xl font-bold mt-2">{question.question}</h2>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {question.options.map((opt, idx) => (
-          <div key={idx} className={`${OPTION_COLORS[idx]} rounded-xl px-4 py-6 font-semibold text-center`}>
-            {opt}
-          </div>
-        ))}
-      </div>
-
-      <div className="text-center space-y-3">
-        <p className="text-slate-400">
-          {answeredCount} / {totalPlayers} answered
-        </p>
-        <button
-          type="button"
-          onClick={onRevealNow}
-          className="bg-slate-800 hover:bg-slate-700 rounded-xl px-6 py-3 font-semibold transition-colors"
-        >
-          Reveal Now
-        </button>
-      </div>
-    </div>
-  )
+export default function LiveQuestion({ question, answeredCount, totalPlayers, onRevealNow, connected = true }) {
+  return <section className="card" aria-label="Live quiz question">
+    <Countdown question={question} />
+    <h1 className="question-prompt">{question.question}</h1>
+    <div className="answer-grid">{question.options.map((option, index) => <div className={`answer-tile ${OPTION_COLORS[index]}`} key={index}><span className="answer-letter">{String.fromCharCode(65 + index)}</span><span>{option}</span></div>)}</div>
+    <div className="question-controls"><p><strong>{answeredCount}</strong> / {totalPlayers} answers in</p><button type="button" onClick={onRevealNow} disabled={!connected} className="btn btn-secondary">Reveal answer <span aria-hidden="true">→</span></button></div>
+    <p className="helper">The answer reveals when everyone responds or the timer runs out.</p>
+  </section>
 }
-
-export default LiveQuestion

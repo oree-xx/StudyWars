@@ -1,157 +1,164 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-
+import AppShell from '../components/AppShell'
+import ConnectionBanner from '../components/ConnectionBanner'
 import Leaderboard from '../components/Leaderboard'
 import AnswerOptions from '../components/play/AnswerOptions'
 import PlayerReveal from '../components/play/PlayerReveal'
 import WaitingScreen from '../components/play/WaitingScreen'
 import { useGameSocket } from '../hooks/useGameSocket'
 import { playerSocketUrl } from '../lib/ws'
-
-const STAGE = {
-  LOBBY: 'lobby',
-  QUESTION: 'question',
-  REVEAL: 'reveal',
-  ENDED: 'ended',
-}
+import { getPlayerSession, normalizeQuestion, saveSession } from '../lib/session'
 
 function Play() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { roomCode, name } = location.state || {}
-
-  useEffect(() => {
-    if (!roomCode || !name) {
-      navigate('/join', { replace: true })
-    }
-  }, [roomCode, name, navigate])
-
-  const socketUrl = useMemo(
-    () => (roomCode && name ? playerSocketUrl(roomCode, name) : null),
-    [roomCode, name],
-  )
-  const { lastMessage, status, send } = useGameSocket(socketUrl)
-
+  const [session] = useState(() => getPlayerSession(location.state))
   const [hasJoined, setHasJoined] = useState(false)
   const [playerId, setPlayerId] = useState(null)
-  const [stage, setStage] = useState(STAGE.LOBBY)
+  const [stage, setStage] = useState('lobby')
   const [players, setPlayers] = useState([])
   const [question, setQuestion] = useState(null)
+  const questionRef = useRef(null)
   const [selectedOption, setSelectedOption] = useState(null)
+  const [pendingOption, setPendingOption] = useState(null)
+  const pendingRef = useRef(null)
+  const [answerError, setAnswerError] = useState('')
   const [reveal, setReveal] = useState(null)
   const [finalLeaderboard, setFinalLeaderboard] = useState([])
 
   useEffect(() => {
-    if (!lastMessage) return
+    if (!session) navigate('/join', { replace: true })
+  }, [session, navigate])
 
-    switch (lastMessage.type) {
-      case 'joined':
+  const socketUrl = useMemo(
+    () => session ? playerSocketUrl(session.roomCode, session.name, session.playerToken) : null,
+    [session],
+  )
+  function clearPending() {
+    pendingRef.current = null
+    setPendingOption(null)
+  }
+  function handleMessage(message) {
+    switch (message.type) {
+      case 'room_state': {
+        const current = normalizeQuestion(message.question)
         setHasJoined(true)
-        setPlayerId(lastMessage.player_id)
+        setPlayerId(message.player_id)
+        setPlayers(message.players)
+        setQuestion(current)
+        questionRef.current = current
+        setSelectedOption(message.selected_option ?? null)
+        clearPending()
+        setAnswerError('')
+        setReveal(message.reveal)
+        setFinalLeaderboard(message.leaderboard || [])
+        setStage(message.state)
         break
+      }
       case 'player_joined':
       case 'player_left':
-        setPlayers(lastMessage.players)
+        setPlayers(message.players)
         break
-      case 'question':
-        setQuestion(lastMessage)
+      case 'question': {
+        const current = normalizeQuestion(message)
+        setQuestion(current)
+        questionRef.current = current
         setSelectedOption(null)
+        clearPending()
+        setAnswerError('')
         setReveal(null)
-        setStage(STAGE.QUESTION)
+        setStage('question')
+        break
+      }
+      case 'answer_ack':
+        if (message.question_index === questionRef.current?.index) {
+          setSelectedOption(message.option_index)
+          clearPending()
+          setAnswerError('')
+        }
+        break
+      case 'answer_rejected':
+        clearPending()
+        setAnswerError(message.reason || 'Your answer could not be accepted.')
         break
       case 'reveal':
-        setReveal(lastMessage)
-        setStage(STAGE.REVEAL)
+        clearPending()
+        setReveal(message)
+        setStage('reveal')
         break
       case 'game_over':
-        setFinalLeaderboard(lastMessage.leaderboard)
-        setStage(STAGE.ENDED)
+        clearPending()
+        setFinalLeaderboard(message.leaderboard)
+        setStage('ended')
         break
       default:
         break
     }
-  }, [lastMessage])
+  }
+  const { status, closeCode, send } = useGameSocket(socketUrl, handleMessage, clearPending)
 
   function handleAnswer(optionIndex) {
-    if (selectedOption !== null) return
-    setSelectedOption(optionIndex)
-    send({ type: 'answer', option_index: optionIndex })
+    if (selectedOption !== null || pendingRef.current !== null || status !== 'open') return
+    if (Date.now() >= question.deadline) return
+    setAnswerError('')
+    if (send({ type: 'answer', question_index: question.index, option_index: optionIndex })) {
+      pendingRef.current = optionIndex
+      setPendingOption(optionIndex)
+    } else {
+      setAnswerError('Reconnecting. Your answer has not been sent yet.')
+    }
   }
 
-  if (!roomCode || !name) {
-    return null // redirecting to /join
+  function leaveRoom() {
+    saveSession('player', null)
+    navigate('/join', { replace: true, state: null })
   }
-
-  if (status === 'closed' && !hasJoined) {
-    return (
-      <CenteredMessage>
-        <p className="text-red-400 font-semibold text-lg">Couldn't join this room</p>
-        <p className="text-slate-400 mt-2">
-          Check the room code and make sure the game hasn't already started.
-        </p>
-        <Link
-          to="/join"
-          className="inline-block mt-6 bg-indigo-500 hover:bg-indigo-400 rounded-xl px-6 py-3 font-semibold transition-colors"
-        >
-          Try Again
-        </Link>
-      </CenteredMessage>
-    )
-  }
-
-  if (!hasJoined) {
-    return (
-      <CenteredMessage>
-        <p className="text-slate-400">Connecting…</p>
-      </CenteredMessage>
-    )
-  }
-
+  if (!session) return null
+  const closedMessage = closeCode === 4002
+    ? 'This player session is open in another tab.'
+    : closeCode === 4003
+      ? 'This game has already started. Ask your host for the next room code.'
+      : 'This room is unavailable. Check the code or ask your host to start a new quiz.'
   const myEntry = reveal?.leaderboard.find((p) => p.id === playerId)
   const myRank = reveal ? reveal.leaderboard.findIndex((p) => p.id === playerId) + 1 : null
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white px-4 py-10">
-      <div className="max-w-md mx-auto">
-        {status === 'closed' && (
-          <p className="text-center text-amber-400 text-sm mb-4">
-            Connection lost — try refreshing if the game doesn't continue.
-          </p>
-        )}
-
-        {stage === STAGE.LOBBY && <WaitingScreen name={name} players={players} />}
-
-        {stage === STAGE.QUESTION && question && (
-          <AnswerOptions question={question} selectedOption={selectedOption} onAnswer={handleAnswer} />
-        )}
-
-        {stage === STAGE.REVEAL && reveal && (
-          <PlayerReveal
-            didNotAnswer={selectedOption === null}
-            wasCorrect={selectedOption !== null && selectedOption === reveal.correct_index}
-            score={myEntry?.score}
-            rank={myRank}
-            explanation={reveal.explanation}
-          />
-        )}
-
-        {stage === STAGE.ENDED && (
-          <div className="space-y-6 text-center">
-            <h2 className="text-3xl font-bold">🏁 Game Over</h2>
-            <Leaderboard players={finalLeaderboard} />
+    <AppShell compact roomCode={session.roomCode} label={session.name}>
+      <ConnectionBanner status={status} message={status === 'closed' ? closedMessage : undefined} />
+      {status === 'closed' && (
+        <section className="card centered stack"><div><div className="waiting-symbol" aria-hidden="true">↗</div><p className="eyebrow">Let’s find your next game</p><h1 className="reveal-answer">Your next round is waiting.</h1><p className="muted">Head back to the join screen when you have a room code.</p></div><button type="button" className="btn btn-primary full-width" onClick={leaveRoom}>Back to join <span aria-hidden="true">→</span></button></section>
+      )}
+      {!hasJoined && status !== 'closed' && (
+        <section className="card centered" role="status"><div className="waiting-symbol" aria-hidden="true">↻</div><p className="eyebrow">Making your entrance</p><h1 className="reveal-answer">Finding your place in the room.</h1><p className="muted">Hang tight, {session.name}. We’re connecting you to the game.</p></section>
+      )}
+      {hasJoined && stage === 'lobby' && status !== 'closed' && <WaitingScreen name={session.name} players={players} />}
+      {hasJoined && stage === 'question' && question && status !== 'closed' && (
+        <>
+          <AnswerOptions question={question} selectedOption={selectedOption} pendingOption={pendingOption}
+            connected={status === 'open'} onAnswer={handleAnswer} />
+          {answerError && <p role="alert" className="error-notice" style={{ marginTop: 16 }}>{answerError}</p>}
+        </>
+      )}
+      {hasJoined && stage === 'reveal' && reveal && status !== 'closed' && (
+        <PlayerReveal didNotAnswer={selectedOption === null}
+          wasCorrect={selectedOption !== null && selectedOption === reveal.correct_index}
+          score={myEntry?.score} rank={myRank} explanation={reveal.explanation} />
+      )}
+      {hasJoined && stage === 'ended' && status !== 'closed' && (
+        <div className="stack">
+          <div className="results-heading">
+            <div className="trophy-icon" aria-hidden="true">✦</div>
+            <p className="eyebrow">That's a wrap</p>
+            <h1>Knowledge wins.</h1>
+            <p className="muted">Every round is another thing you know.</p>
           </div>
-        )}
-      </div>
-    </div>
+          <section className="card"><div className="roster-header"><h2>Final standings</h2><span className="badge">{finalLeaderboard.length} players</span></div><Leaderboard players={finalLeaderboard} /></section>
+          <button type="button" className="btn btn-primary full-width" onClick={leaveRoom}>Join another quiz <span aria-hidden="true">→</span></button>
+          <Link to="/" className="back-link centered">← Back home</Link>
+        </div>
+      )}
+    </AppShell>
   )
 }
-
-function CenteredMessage({ children }) {
-  return (
-    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center px-4">
-      <div className="text-center max-w-sm">{children}</div>
-    </div>
-  )
-}
-
 export default Play

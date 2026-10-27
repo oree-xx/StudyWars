@@ -1,65 +1,24 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AppShell from '../components/AppShell'
 
-function Join() {
+export default function Join() {
   const [roomCode, setRoomCode] = useState('')
   const [name, setName] = useState('')
   const navigate = useNavigate()
-
-  const canSubmit = roomCode.trim().length > 0 && name.trim().length > 0
-
-  function handleSubmit(e) {
-    e.preventDefault()
-    if (!canSubmit) return
-    navigate('/play', { state: { roomCode: roomCode.trim().toUpperCase(), name: name.trim() } })
+  const canSubmit = roomCode.trim().length === 6 && name.trim().length > 0
+  function handleSubmit(event) {
+    event.preventDefault()
+    if (canSubmit) navigate('/play', { state: { roomCode: roomCode.trim().toUpperCase(), name: name.trim() } })
   }
-
-  return (
-    <div className="min-h-screen bg-slate-900 text-white px-4 py-10">
-      <div className="max-w-md mx-auto">
-        <Link to="/" className="text-slate-400 hover:text-white text-sm">
-          &larr; Back
-        </Link>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Join a Quiz</h1>
-            <p className="text-slate-400 mt-2">Enter the room code from your host's screen.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">Room Code</label>
-            <input
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              maxLength={6}
-              placeholder="ABC123"
-              className="w-full rounded-xl bg-slate-800 border border-slate-700 p-4 text-center text-2xl font-bold tracking-widest uppercase placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">Your Name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={20}
-              placeholder="Alex"
-              className="w-full rounded-xl bg-slate-800 border border-slate-700 p-4 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl px-6 py-4 font-semibold text-lg transition-colors"
-          >
-            Join Game
-          </button>
-        </form>
-      </div>
-    </div>
-  )
+  return <AppShell compact label="Join a quiz">
+    <Link to="/" className="back-link">← Back to home</Link>
+    <div className="page-heading"><p className="eyebrow">Your next study session starts here</p><h1>Got a code? You’re in.</h1><p className="muted">Grab the six-character room code from your host and pick a name for the leaderboard.</p></div>
+    <form className="card join-card stack" onSubmit={handleSubmit}>
+      <div><label className="field-label" htmlFor="room-code">Room code</label><input id="room-code" className="text-input join-code-input" value={roomCode} onChange={event => setRoomCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} maxLength={6} placeholder="ABCDEF" autoComplete="off" autoCapitalize="characters" spellCheck={false} required aria-describedby="code-help" /><p id="code-help" className="helper">You’ll find this on the host’s screen.</p></div>
+      <div><label className="field-label" htmlFor="player-name">Your name</label><input id="player-name" className="text-input" value={name} onChange={event => setName(event.target.value)} maxLength={20} placeholder="What should we call you?" autoComplete="nickname" required /></div>
+      <button type="submit" className="btn btn-primary full-width" disabled={!canSubmit}>Let’s play <span aria-hidden="true">→</span></button>
+      <p className="muted small centered">No account needed. Bring your best guesses.</p>
+    </form>
+  </AppShell>
 }
-
-export default Join

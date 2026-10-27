@@ -1,56 +1,15 @@
-function QuestionReview({ questions, onBack, onCreateRoom, creatingRoom, error }) {
-  return (
-    <div className="mt-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Review Questions</h1>
-        <p className="text-slate-400 mt-2">{questions.length} questions generated. Ready to go live?</p>
-      </div>
-
-      <ol className="space-y-4">
-        {questions.map((q, i) => (
-          <li key={i} className="bg-slate-800 rounded-xl p-4">
-            <p className="font-semibold">
-              {i + 1}. {q.question}
-            </p>
-            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              {q.options.map((opt, idx) => (
-                <li
-                  key={idx}
-                  className={`rounded-lg px-3 py-2 ${
-                    idx === q.correct_index
-                      ? 'bg-emerald-600/30 text-emerald-300'
-                      : 'bg-slate-700/50 text-slate-300'
-                  }`}
-                >
-                  {opt}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ol>
-
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex-1 bg-slate-800 hover:bg-slate-700 rounded-xl px-6 py-4 font-semibold transition-colors"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={onCreateRoom}
-          disabled={creatingRoom}
-          className="flex-1 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 rounded-xl px-6 py-4 font-semibold transition-colors"
-        >
-          {creatingRoom ? 'Creating room…' : 'Start Live Game'}
-        </button>
-      </div>
+export default function QuestionReview({ questions, onBack, onCreateRoom, creatingRoom, error }) {
+  return <div className="stack">
+    <div>
+      <div className="step-strip" aria-label="Quiz setup steps"><span>✓ Notes added</span><span className="step-line" /><span className="active">02 · Review</span><span className="step-line" /><span>03 · Go live</span></div>
+      <div className="page-heading" style={{ marginBottom: 0 }}><p className="eyebrow">Your quiz is taking shape</p><h1>Give it a quick once-over.</h1><p className="muted">{questions.length} questions, ready for your group. Check the answers before you open the room.</p></div>
     </div>
-  )
+    <ol className="review-list">{questions.map((question, index) => <li className="card" key={index}>
+      <div className="review-title"><span className="question-number">{String(index + 1).padStart(2, '0')}</span><p>{question.question}</p></div>
+      <ul className="review-options">{question.options.map((option, optionIndex) => <li key={optionIndex} className={optionIndex === question.correct_index ? 'correct' : ''}><span>{String.fromCharCode(65 + optionIndex)}</span><span>{option}{optionIndex === question.correct_index && <span> ✓<span className="sr-only"> Correct answer</span></span>}</span></li>)}</ul>
+      <p className="review-explanation">{question.explanation}</p>
+    </li>)}</ol>
+    {error && <p className="error-notice" role="alert">{error}</p>}
+    <div className="action-row"><button type="button" onClick={onBack} disabled={creatingRoom} className="btn btn-secondary">← Back to notes</button><button type="button" onClick={onCreateRoom} disabled={creatingRoom || questions.length === 0} className="btn btn-primary">{creatingRoom ? 'Opening your room…' : 'Open game room'} <span aria-hidden="true">→</span></button></div>
+  </div>
 }
-
-export default QuestionReview
