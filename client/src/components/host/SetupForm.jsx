@@ -28,7 +28,6 @@ export default function SetupForm({ onGenerate, generating, error }) {
         <textarea id="study-notes" className="text-input" value={notes} onChange={event => setNotes(event.target.value)} rows={8} placeholder="Start with what you’re learning. Paste your notes here…" disabled={generating} />
         <div className="helper"><span>More context makes better questions.</span><span>{notes.length.toLocaleString()} characters</span></div>
       </div> : <div className="upload-zone">
-        <div className="upload-icon" aria-hidden="true">↑</div>
         <input id="study-pdf" type="file" aria-label="Upload a PDF" accept="application/pdf,.pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} disabled={generating} />
         {file && <p className="small muted" style={{ marginTop: 12, overflowWrap: 'anywhere' }}>{file.name}</p>}
       </div>}
