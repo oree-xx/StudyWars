@@ -64,9 +64,10 @@ flowchart LR
 
 ## Demo
 
-| Home | Live player view |
-|:---:|:---:|
-| <img src="docs/screenshots/home-updated.png" width="480" alt="Redesigned StudyWars homepage"> | <img src="docs/screenshots/player-updated.png" width="480" alt="Player question with countdown and answer options"> |
+<p align="center">
+  <img src="docs/screenshots/home-updated.png" width="48%" alt="Redesigned StudyWars homepage">
+  <img src="docs/screenshots/player-updated.png" width="48%" alt="Player question with countdown and answer options">
+</p>
 
 ## Tech stack
 
