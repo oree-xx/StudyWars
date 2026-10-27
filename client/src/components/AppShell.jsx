@@ -10,7 +10,7 @@ export function SiteHeader({ roomCode }) {
 }
 
 export function SiteFooter() {
-  return <footer className="site-footer"><span>Less cramming. More competing.</span><span className="footer-note"><span className="small-dot" /> Made for learning together</span></footer>
+  return <footer className="site-footer"><span className="footer-note"><span className="small-dot" /> Made for learning together</span></footer>
 }
 
 export default function AppShell({ children, compact = false, roomCode, label }) {
