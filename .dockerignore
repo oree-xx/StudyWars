@@ -1,0 +1,15 @@
+.git
+.github
+**/node_modules
+**/dist
+**/venv
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.*
+**/*.log
+server/tests
+server/uploads
+docs
+.vscode
+.idea

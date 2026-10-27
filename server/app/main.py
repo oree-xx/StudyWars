@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.frontend import mount_frontend
 from app.routers import questions, rooms, ws
 
 app = FastAPI(title="StudyWars API")
@@ -22,3 +23,6 @@ app.include_router(ws.router)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+mount_frontend(app, settings.frontend_dist)
