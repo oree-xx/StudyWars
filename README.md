@@ -81,8 +81,23 @@ flowchart LR
 ## Demo
 
 <p align="center">
-  <img src="docs/screenshots/home-updated.png" width="48%" alt="Redesigned StudyWars homepage">
-  <img src="docs/screenshots/player-updated.png" width="48%" alt="Player question with countdown and answer options">
+  <img src="docs/screenshots/home.jpg" width="48%" alt="StudyWars homepage">
+  <img src="docs/screenshots/host-setup.jpg" width="48%" alt="Host quiz setup with PDF upload and study notes">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/question-review.jpg" width="48%" alt="Generated questions ready for the host to review">
+  <img src="docs/screenshots/host-lobby.jpg" width="48%" alt="Host lobby with room code and joined players">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/join-quiz.jpg" width="48%" alt="Join quiz form with room code and player name">
+  <img src="docs/screenshots/player-answer-options.jpg" width="48%" alt="Player question with countdown and answer options">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/host-reveal.jpg" width="48%" alt="Host answer reveal with the correct answer and explanation">
+  <img src="docs/screenshots/final-results.jpg" width="48%" alt="Final quiz results and player leaderboard">
 </p>
 
 ## Tech stack
