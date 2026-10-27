@@ -42,7 +42,7 @@ mathematical theory, especially when preparing for exams. Being able to ask ques
 and work through explanations at my own pace has made difficult topics easier to grasp.
 
 But we also wanted a way to test each other and make studying together more fun. When
-we come up with all the questions ourselves, we can miss things — including questions
+we come up with all the questions ourselves, we can miss questions
 none of us would have thought to ask.
 
 That's why I built StudyWars: to turn the material we're already studying into questions
