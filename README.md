@@ -20,6 +20,7 @@
 
 ## Contents
 
+- [Why I built StudyWars](#why-i-built-studywars)
 - [How it works](#how-it-works)
 - [Features](#features)
 - [Demo](#demo)
@@ -33,6 +34,20 @@
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Why I built StudyWars
+
+My friends and I use AI a lot to study our lecture notes. It has helped me understand
+mathematical theory, especially when preparing for exams. Being able to ask questions
+and work through explanations at my own pace has made difficult topics easier to grasp.
+
+But we also wanted a way to test each other and make studying together more fun. When
+we come up with all the questions ourselves, we can miss things — including questions
+none of us would have thought to ask.
+
+That's why I built StudyWars: to turn the material we're already studying into questions
+we can answer together. A little competition gives us a fun way to check what we know,
+spot what we need to revisit, and keep learning from each other.
 
 ## How it works
 
