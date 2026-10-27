@@ -17,7 +17,7 @@ export default function SetupForm({ onGenerate, generating, error }) {
 
   return <>
     <div className="step-strip" aria-label="Quiz setup steps"><span className="active">01 · Add your notes</span><span className="step-line" /><span>02 · Review</span><span className="step-line" /><span>03 · Go live</span></div>
-    <div className="page-heading"><p className="eyebrow">You bring the knowledge</p><h1>Let’s build your next battle.</h1><p className="muted">A chapter, a lecture, that page of revision notes. Turn it into a quiz your group will actually want to play.</p></div>
+    <div className="page-heading"><p className="eyebrow">You bring the knowledge</p><h1>Let’s build your next battle.</h1></div>
     <form onSubmit={handleSubmit} className="card stack" aria-busy={generating}>
       <div className="segmented" aria-label="Choose your study material">
         <button type="button" aria-pressed={inputMode === 'notes'} onClick={() => setInputMode('notes')} disabled={generating}>≡ Paste notes</button>
