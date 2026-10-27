@@ -27,6 +27,7 @@
 - [Tech stack](#tech-stack)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
+- [Deployment](#deployment)
 - [Playing a game](#playing-a-game)
 - [Testing](#testing)
 - [API reference](#api-reference)
@@ -184,6 +185,40 @@ npm run dev
 It starts on `http://localhost:5173` and proxies `/api` and `/ws` requests through to the
 backend automatically — no extra config needed.
 
+## Deployment
+
+The [Render Blueprint](render.yaml) runs a free demo service from `master`. The
+[Dockerfile](Dockerfile) builds the React frontend and serves it through FastAPI, so
+pages, API requests, and WebSocket connections share one HTTPS address.
+
+1. Sign in to [Render](https://dashboard.render.com/) and choose **New > Blueprint**.
+2. Connect your GitHub account and select `oree-xx/StudyWars`, branch `master`.
+3. Review the free service in `render.yaml` and enter your `ANTHROPIC_API_KEY` when prompted.
+   This key belongs in Render's environment settings, never in the repository or frontend.
+4. Deploy the Blueprint, then open the service's `onrender.com` address.
+
+For subsequent pushes, **After CI Checks Pass** makes Render wait for all GitHub checks
+before deploying. The workflow checks the backend, frontend, and production container.
+Creating this service in your Render account is a one-time setup; committing the Blueprint
+alone does not create a live deployment. See [Render's deployment docs](https://render.com/docs/deploys).
+
+The [free service](https://render.com/docs/free) sleeps after 15 minutes without inbound
+traffic and can take about a minute to wake. Rooms and scores are kept in memory, so
+sleep, restarts, and redeploys clear active games. Keep one service instance and one
+backend worker; the container already starts one worker. LLM API usage is billed
+separately by your provider.
+
+To check the same production image locally, run from the repository root:
+
+```bash
+docker build -t studywars .
+docker run --rm -p 8000:8000 --env-file server/.env studywars
+```
+
+Open `http://localhost:8000`. `PORT` controls the container's listening port (default
+`8000`); Render supplies its own value. `FRONTEND_DIST` points to the compiled frontend
+and is set inside the image. Local development can continue using Vite as described above.
+
 ## Playing a game
 
 1. Open `http://localhost:5173`.
@@ -224,6 +259,12 @@ npm test
 npm run build
 ```
 
+GitHub Actions runs backend tests, frontend lint (including warnings), frontend tests,
+and the production build on every push to `master` and every pull request. A separate job
+builds the Docker image and checks its health endpoint and frontend pages. You can also
+run the [CI workflow](.github/workflows/ci.yml) manually from the Actions tab. These checks
+require no LLM API key and do not spend API credits.
+
 For browser QA without an API key, run the sample-question backend from `server/`:
 
 ```bash
@@ -263,6 +304,7 @@ new player, and a missing room respectively; these are terminal rather than retr
 server/                FastAPI backend
   app/
     main.py             App entrypoint, CORS, router wiring
+    frontend.py          Production assets and client-side routes
     config.py            Settings (.env loading)
     ai.py                LLM integration (question generation)
     pdf_utils.py          PDF text extraction
@@ -286,6 +328,10 @@ client/                React frontend
       api.js                REST API client
       ws.js                  WebSocket URL builders
       optionColors.js         Answer-option color mapping
+
+.github/workflows/ci.yml  Automated tests, lint, build, and container checks
+Dockerfile               Production frontend + backend image
+render.yaml              Free Render service and deployment after CI passes
 ```
 
 ## Roadmap

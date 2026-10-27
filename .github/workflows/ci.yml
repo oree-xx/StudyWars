@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            server/requirements.txt
+            server/requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run backend tests
+        run: python -m unittest discover -s tests -v
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint -- --deny-warnings
+      - name: Run frontend tests
+        run: npm test
+      - name: Build for production
+        run: npm run build
+
+  docker:
+    name: Production container
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build production image
+        run: docker build --tag studywars:ci .
+      - name: Start production container
+        run: >-
+          docker run --detach --name studywars-ci
+          --publish 127.0.0.1:8000:8000 --env PORT=8000 studywars:ci
+      - name: Check health and frontend routes
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-connrefused \
+            --retry-delay 5 --retry-max-time 60 http://127.0.0.1:8000/health
+          for route in / /host /join; do
+            curl --fail --silent --show-error "http://127.0.0.1:8000${route}" \
+              | grep -q '<div id="root"></div>'
+          done
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs studywars-ci || true
+      - name: Remove production container
+        if: always()
+        run: docker rm --force studywars-ci || true
