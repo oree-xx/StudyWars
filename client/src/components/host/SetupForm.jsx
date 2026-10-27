@@ -29,9 +29,7 @@ export default function SetupForm({ onGenerate, generating, error }) {
         <div className="helper"><span>More context makes better questions.</span><span>{notes.length.toLocaleString()} characters</span></div>
       </div> : <div className="upload-zone">
         <div className="upload-icon" aria-hidden="true">↑</div>
-        <label className="field-label" htmlFor="study-pdf">Your notes, ready for their next chapter.</label>
-        <p className="muted small">Choose a PDF with selectable text.</p>
-        <input id="study-pdf" type="file" accept="application/pdf,.pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} disabled={generating} />
+        <input id="study-pdf" type="file" aria-label="Upload a PDF" accept="application/pdf,.pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} disabled={generating} />
         {file && <p className="small muted" style={{ marginTop: 12, overflowWrap: 'anywhere' }}>{file.name}</p>}
       </div>}
       <fieldset><legend className="field-label">How many questions?</legend><div className="count-pills">{NUM_QUESTIONS_OPTIONS.map(count => <button type="button" key={count} aria-pressed={numQuestions === count} onClick={() => setNumQuestions(count)} disabled={generating}>{count}</button>)}</div><p className="helper">20 seconds per question. Faster correct answers earn more points.</p></fieldset>
