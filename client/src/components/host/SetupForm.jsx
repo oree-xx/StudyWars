@@ -37,7 +37,7 @@ export default function SetupForm({ onGenerate, generating, error }) {
       <fieldset><legend className="field-label">How many questions?</legend><div className="count-pills">{NUM_QUESTIONS_OPTIONS.map(count => <button type="button" key={count} aria-pressed={numQuestions === count} onClick={() => setNumQuestions(count)} disabled={generating}>{count}</button>)}</div><p className="helper">20 seconds per question. Faster correct answers earn more points.</p></fieldset>
       {error && <p className="error-notice" role="alert">{error}</p>}
       <button type="submit" disabled={!canSubmit || generating} className="btn btn-primary full-width">{generating ? 'Building your questions…' : 'Generate my quiz'}<span aria-hidden="true">{generating ? '↻' : '✦'}</span></button>
-      <p className="muted small centered" role="status">{generating ? 'Finding the key ideas in your notes. This can take a moment.' : 'You’ll review every question before anyone joins.'}</p>
+      {generating && <p className="muted small centered" role="status">Finding the key ideas in your notes. This can take a moment.</p>}
     </form>
   </>
 }
