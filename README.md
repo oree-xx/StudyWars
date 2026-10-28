@@ -1,10 +1,14 @@
 <div align="center">
-  <img src="docs/brand/logo.svg" alt="StudyWars" width="880" />
+  <a href="https://studywars-lime.vercel.app/">
+    <img src="docs/brand/logo.svg" alt="StudyWars" width="880" />
+  </a>
 
   **Turn your notes into a live, multiplayer quiz in seconds.**
 
   Upload a PDF or paste your notes, let AI write the questions, and host a Kahoot style
   game your friends can join from their phones.
+
+  **[Live at StudyWars](https://studywars-lime.vercel.app/)**
 
   [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
