@@ -26,7 +26,7 @@
 - [Demo](#demo)
 - [Tech stack](#tech-stack)
 - [Architecture](#architecture)
-- [Getting started](#getting-started)
+- [Local development](#local-development)
 - [Deployment](#deployment)
 - [Playing a game](#playing-a-game)
 - [Testing](#testing)
@@ -62,13 +62,13 @@ flowchart LR
 
 1. **Host uploads a PDF or pastes notes.**
 2. **AI reads the content** and generates multiple choice questions automatically.
-3. **Host starts a live game room** and shares a short join code.
+3. **Host reviews the questions**, opens a live game room, and shares a short join code.
 4. **Players join** from their phones or laptops — no account needed.
 5. **Everyone answers in real time**, and the leaderboard updates after every question.
 
 ## Features
 
-- 🧠 **AI-generated quizzes** — drop in a PDF or raw notes, get 1–20 multiple-choice questions back, powered by the LLM API.
+- 🧠 **AI-generated quizzes** — drop in a PDF or raw notes and choose 3, 5, 8, or 10 multiple-choice questions, powered by the LLM API. The API supports counts from 1–20.
 - ⚡ **Real-time gameplay** — rooms, questions, reveals, and scoring are all pushed live over WebSockets.
 - 🏆 **Live leaderboard** — scores update after every question so players can see where they stand.
 - 📱 **No install for players** — join from any browser with a room code and a name.
@@ -82,6 +82,10 @@ flowchart LR
 ## Demo
 
 [Play the live demo](https://studywars-lime.vercel.app/)
+
+Host or join a game in your browser — no local setup needed. The demo runs on Vercel
+with Upstash Redis for persistent rooms and scores. See [Playing a game](#playing-a-game)
+for the host and player steps.
 
 <p align="center">
   <img src="docs/screenshots/home.jpg" width="48%" alt="StudyWars homepage">
@@ -118,13 +122,13 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph Client["React (Vite) — :5173"]
+    subgraph Client["React — Vercel CDN / local Vite :5173"]
         Home["Home"]
         Host["Host page"]
         Join["Join / Play page"]
     end
 
-    subgraph Server["FastAPI — :8000"]
+    subgraph Server["FastAPI — Vercel function / local :8000"]
         HTTP["/api/generate-questions<br/>/api/rooms"]
         WSHost["/ws/host/{room_code}"]
         WSPlayer["/ws/player/{room_code}"]
@@ -154,11 +158,14 @@ the backend returns an unavailable response if Redis is missing or unreachable; 
 switches to isolated in-memory rooms. Local development can run without Redis, but those
 local rooms are lost when that process exits.
 
-## Getting started
+## Local development
+
+These instructions run your own copy on your computer. To play the hosted version,
+open [the live demo](https://studywars-lime.vercel.app/) instead.
 
 ### Prerequisites
 
-- [Python 3.11 or 3.12](https://www.python.org/downloads/) recommended for the pinned backend dependencies
+- [Python 3.12](https://www.python.org/downloads/), matching CI and the Vercel runtime
 - [Node.js 20.19+ or 22.12+](https://nodejs.org/) and npm, as required by [Vite](https://vite.dev/guide/)
 - An [LLM API key](https://aistudio.google.com/apikey) for the configured provider
 - A Redis connection for persistent rooms; optional for local development, required on Vercel
@@ -189,6 +196,8 @@ Open `server/.env`, keep `LLM_PROVIDER=gemini`, and paste your Google AI Studio 
 another supported model. Requests use structured JSON output, then validate every
 question and the requested count before displaying the quiz for review.
 
+`GEMINI_KEY` is also accepted as an alias; `GEMINI_API_KEY` takes precedence if both are set.
+
 To use the alternative provider, set `LLM_PROVIDER=anthropic`, provide `ANTHROPIC_API_KEY`,
 and optionally override `ANTHROPIC_MODEL` (default: `claude-sonnet-4-6`). Only the selected
 provider receives the notes; the app does not fall back to another provider automatically.
@@ -208,11 +217,11 @@ It starts on `http://localhost:8000`. Check it's alive at `http://localhost:8000
 
 ### 3. Frontend setup
 
-In a separate terminal:
+From the repository root, in a separate terminal:
 
 ```bash
 cd client
-npm install
+npm ci
 npm run dev
 ```
 
@@ -222,6 +231,10 @@ backend automatically — no extra config needed.
 ## Deployment
 
 ### Vercel Hobby and Upstash Free
+
+The live deployment is [studywars-lime.vercel.app](https://studywars-lime.vercel.app/).
+It is connected to this repository's `master` branch for automatic deployments. The
+following steps describe how to deploy your own copy.
 
 [vercel.json](vercel.json) deploys the whole application in one Vercel project. The build
 places React files in `public/` for Vercel's CDN, while [api/index.py](api/index.py) exposes
@@ -254,9 +267,11 @@ The production Redis namespace stays stable across deployments. Preview deployme
 separate namespaces so their test rooms do not change production games. Changing Redis
 databases or `REDIS_KEY_PREFIX` starts a separate set of rooms.
 
-Vercel Hobby allows [WebSocket connections](https://vercel.com/docs/functions/websockets)
-for up to 300 seconds per invocation. Clients reconnect automatically and restore their
-room from Redis, including the original question deadline. This supports longer games
+Vercel [WebSocket connections](https://vercel.com/docs/functions/websockets) follow the
+[function duration limits](https://vercel.com/docs/functions/limitations), which are
+300 seconds per invocation on Hobby. StudyWars renews each connection after 270 seconds;
+clients reconnect automatically and restore their room from Redis, including the original
+question deadline. This supports longer games
 without keeping one Python process alive indefinitely. Functions can still have a cold
 start, and free-plan usage limits still apply. PDF uploads are capped at 4 MiB to fit inside
 Vercel's 4.5 MB total request limit; paste extracted notes for larger documents.
@@ -286,16 +301,22 @@ the Vercel project uses `vercel.json` instead.
 
 ## Playing a game
 
-1. Open `http://localhost:5173`.
-2. Click **Host a Quiz**, upload a PDF or paste some notes, pick a question count, and generate.
-3. Share the room code that appears in the lobby.
-4. On a second device (or another browser tab), click **Join a Quiz**, enter the code and a
-   name.
-5. Once everyone's in, the host starts the game — questions, reveals, and the leaderboard all
+1. Open [StudyWars](https://studywars-lime.vercel.app/).
+2. Click **Host a quiz**, upload a PDF with selectable text (up to 4 MiB) or paste some
+   notes, choose 3, 5, 8, or 10 questions, and click **Generate my quiz**.
+3. Review the generated questions, answers, and explanations, then click **Open game room**.
+4. Share the six-character room code and the [join page](https://studywars-lime.vercel.app/join).
+5. Players open that link on their devices or in separate browser tabs, enter the code and
+   a name, then click **Let's play**.
+6. Once everyone's in, the host starts the game — questions, reveals, and the leaderboard all
    sync live to every player.
-6. Answer before the countdown reaches zero. The server confirms each accepted answer; a
+7. Answer before the countdown reaches zero. The server confirms each accepted answer; a
    correct answer scores 100–1,000 points depending on speed. The host can reveal early,
    and the answer is revealed automatically when time expires or everyone has answered.
+
+For local testing, complete [Local development](#local-development), then open
+`http://localhost:5173` in separate host and player tabs. Host and players must use the
+same deployment; a room created locally cannot be joined from the live demo.
 
 Host credentials and player tokens are stored in the current tab's `sessionStorage`. A
 refresh in that tab restores the current stage and remaining time; an automatic reconnect
@@ -315,6 +336,26 @@ python -m unittest discover -s tests -v
 The tests simulate both LLM providers and cover structured output, question validation,
 provider errors, WebSocket recovery, scoring, deadlines, and complete host/player game flows.
 They do not call the live LLM APIs or spend credits.
+
+Redis integration tests are skipped unless `TEST_REDIS_URL` is set. To include them,
+start a disposable Redis instance in another terminal (requires Docker):
+
+```bash
+docker run --rm --name studywars-test-redis -p 127.0.0.1:6380:6379 redis:7-alpine
+```
+
+In the backend test terminal, set the connection before running the test command above:
+
+```powershell
+$env:TEST_REDIS_URL = "redis://127.0.0.1:6380/0"  # Windows PowerShell
+```
+
+```bash
+export TEST_REDIS_URL=redis://127.0.0.1:6380/0    # macOS/Linux
+```
+
+CI supplies Redis 7 automatically, runs these persistence tests, and checks that the
+root and server dependency files match.
 
 Run frontend checks from `client/`:
 
@@ -346,9 +387,12 @@ for the real application; do not deploy the fixture.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness check. |
-| `POST` | `/api/generate-questions` | Accepts a PDF file (`multipart/form-data`) or `notes` text plus `num_questions` (1–20); returns AI-generated multiple-choice questions. |
-| `POST` | `/api/rooms` | Creates a game room from a list of questions; returns a `room_code` and a `host_token`. |
+| `GET` | `/health` | App and room-storage health: returns `{"status":"ok"}` when available, or HTTP 503 if room storage is unavailable. Does not validate LLM credentials. |
+| `POST` | `/api/generate-questions` | Accepts form fields `file` (PDF) or `notes`, plus `num_questions` (1–20, default 5); returns AI-generated multiple-choice questions. |
+| `POST` | `/api/rooms` | Accepts JSON containing a `questions` list of 1–20 validated questions; returns a `room_code` and a `host_token`. |
+
+PDFs must contain extractable text and be no larger than 4 MiB. Question generation uses
+the first 40,000 characters of the extracted PDF text or pasted notes.
 
 ### WebSockets
 
@@ -358,10 +402,19 @@ for the real application; do not deploy the fixture.
 | `/ws/player/{room_code}?name=...&player_token=...` | Player | Joins the lobby with a name and an unguessable client-generated token. The same token resumes the player in any game stage. Sends `answer` with `question_index` and `option_index`; receives `answer_ack` after acceptance. |
 
 Both sockets first receive a `room_state` snapshot and support `ping`/`pong` heartbeats.
+Host commands `next_question` and `reveal_now` must include the current integer
+`question_index`; missing or stale indexes are ignored.
 Question events include `time_limit`, `ends_at`, and `server_time` (timestamps in milliseconds)
-so countdowns can resume without granting extra time. Close codes `4001`, `4002`, `4003`, and
-`4004` indicate invalid credentials, a replaced connection, a game already in progress for a
-new player, and a missing room respectively; these are terminal rather than retryable errors.
+so countdowns can resume without granting extra time.
+
+| Close code | Meaning | Client behavior |
+|---|---|---|
+| `1012` | Scheduled connection renewal on Vercel | Reconnect and restore the room |
+| `1013` | Temporary storage failure or session timeout | Retry automatically |
+| `4001` | Invalid credentials or an unavailable host room | Stop reconnecting |
+| `4002` | Session replaced by another connection | Stop reconnecting |
+| `4003` | New player joining after the game started, or a room with 100 players | Stop reconnecting |
+| `4004` | Player's room is missing or expired | Stop reconnecting |
 
 ## Project structure
 
@@ -408,6 +461,7 @@ render.yaml              Alternative Render Docker deployment
 ## Roadmap
 
 - [x] Persist rooms/scores beyond process restarts
+- [ ] Let hosts enter a custom question count in the browser (the API already supports 1–20)
 - [ ] Support image-based question generation (diagrams, slides)
 - [ ] Exportable results (CSV / share link)
 

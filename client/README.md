@@ -1,16 +1,26 @@
-# React + Vite
+# StudyWars frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+[Play the live demo](https://studywars-lime.vercel.app/), or follow the
+[local development instructions](../README.md#local-development) to run your own copy.
 
-Currently, two official plugins are available:
+The frontend uses React 19, Vite 8, React Router, and Tailwind CSS 4. Start the FastAPI
+backend on port 8000, then run these commands from this `client/` directory:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm ci
+npm run dev
+```
 
-## React Compiler
+Open `http://localhost:5173`. Vite proxies `/api` and `/ws` to the local backend.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Checks run from this directory:
 
-## Expanding the Oxlint configuration
+```bash
+npm run lint -- --deny-warnings
+npm test
+npm run build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The repository-root [Vercel configuration](../vercel.json) builds and deploys both the
+frontend and backend. See the main README for [deployment](../README.md#deployment),
+[game instructions](../README.md#playing-a-game), and [the API reference](../README.md#api-reference).
