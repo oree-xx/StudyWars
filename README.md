@@ -6,7 +6,7 @@
   Upload a PDF or paste your notes, let AI write the questions, and host a Kahoot style
   game your friends can join from their phones.
 
-  [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+  [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
   [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
   [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -80,6 +80,8 @@ flowchart LR
 - ✨ **Refreshed interface** — responsive host and player screens, lettered answer cards, progress indicators, connection status, and clear answer confirmations.
 
 ## Demo
+
+[Play the live demo](https://studywars-lime.vercel.app/)
 
 <p align="center">
   <img src="docs/screenshots/home.jpg" width="48%" alt="StudyWars homepage">
