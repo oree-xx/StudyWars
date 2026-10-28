@@ -76,6 +76,7 @@ flowchart LR
 - 🖥️ **Two synced views** — a big-screen host view for the room, and a lightweight player view for each device.
 - ⏱️ **Visible countdowns** — each question has a server-enforced 20-second limit. Correct answers earn up to 1,000 points, with more points for faster answers.
 - 🔄 **Connection recovery** — automatically reconnect after a dropped connection, or refresh the same tab to restore your room, score, and accepted answer.
+- 💾 **Persistent rooms** — Redis keeps quiz state, accepted answers, and scores across server restarts and deployments; inactive rooms expire after 24 hours.
 - ✨ **Refreshed interface** — responsive host and player screens, lettered answer cards, progress indicators, connection status, and clear answer confirmations.
 
 ## Demo
@@ -108,7 +109,8 @@ flowchart LR
 | Frontend | [React](https://react.dev/) (Vite), [React Router](https://reactrouter.com/), [Tailwind CSS](https://tailwindcss.com/) |
 | PDF parsing | [pypdf](https://pypi.org/project/pypdf/) |
 | Realtime | WebSockets (host + player channels per room) |
-| State | In-memory room/game state on the server (no database required) |
+| State | Redis room storage and Pub/Sub; [Upstash Redis](https://upstash.com/docs/redis/overall/getstarted) on the free deployment |
+| Hosting | [Vercel](https://vercel.com/docs/frameworks/backend/fastapi) Hobby: static frontend CDN and Python functions |
 
 ## Architecture
 
@@ -124,26 +126,31 @@ flowchart TB
         HTTP["/api/generate-questions<br/>/api/rooms"]
         WSHost["/ws/host/{room_code}"]
         WSPlayer["/ws/player/{room_code}"]
-        Rooms["Room manager<br/>(in-memory state + scoring)"]
+        Rooms["Room manager<br/>(shared state + scoring)"]
         AI["LLM integration"]
     end
 
     LLM[("LLM API")]
+    Redis[("Redis<br/>room state + Pub/Sub")]
 
     Host -- "upload PDF / notes" --> HTTP
     HTTP -- "generate_questions()" --> AI --> LLM
     Host -- "create room" --> HTTP --> Rooms
     Host <-- "start / next / reveal" --> WSHost --> Rooms
     Join <-- "join / answer" --> WSPlayer --> Rooms
+    Rooms <-- "atomic updates + events" --> Redis
 ```
 
-The frontend never talks to the LLM directly. The backend generates the questions, creates the
-room, and then fans out live game state to every connected socket via the `Room` object in
-`app/rooms.py`.
+The frontend never talks to the LLM directly. The backend generates the questions and stores
+the room in Redis. Redis Pub/Sub delivers updates to connected hosts and players even when
+their WebSocket connections reach different server instances. Atomic room updates prevent
+concurrent answers from overwriting one another.
 
-Rooms and scores live in one server process. Run a single backend worker: a server restart
-(including a development reload) clears every room, and multiple workers do not share game
-state. Browser reconnection restores a session only while its original room still exists.
+With Redis configured, rooms, scores, accepted answers, and deadlines survive server
+restarts and deployments. Rooms expire after 24 hours of inactivity by default. On Vercel,
+the backend returns an unavailable response if Redis is missing or unreachable; it never silently
+switches to isolated in-memory rooms. Local development can run without Redis, but those
+local rooms are lost when that process exits.
 
 ## Getting started
 
@@ -152,6 +159,7 @@ state. Browser reconnection restores a session only while its original room stil
 - [Python 3.11 or 3.12](https://www.python.org/downloads/) recommended for the pinned backend dependencies
 - [Node.js 20.19+ or 22.12+](https://nodejs.org/) and npm, as required by [Vite](https://vite.dev/guide/)
 - An [LLM API key](https://aistudio.google.com/apikey) for the configured provider
+- A Redis connection for persistent rooms; optional for local development, required on Vercel
 
 ### 1. Clone the repo
 
@@ -183,6 +191,11 @@ To use the alternative provider, set `LLM_PROVIDER=anthropic`, provide `ANTHROPI
 and optionally override `ANTHROPIC_MODEL` (default: `claude-sonnet-4-6`). Only the selected
 provider receives the notes; the app does not fall back to another provider automatically.
 
+For persistent rooms, also set `REDIS_URL` to your Redis connection URL. Use the TLS TCP URL
+from Upstash (`rediss://...`), not its REST URL or REST token. `ROOM_STORAGE=auto` selects
+Redis when a URL is present and uses memory only for local development without one.
+`ROOM_TTL_SECONDS=86400` sets the default 24-hour inactivity expiry.
+
 Run the backend:
 
 ```bash
@@ -206,28 +219,57 @@ backend automatically — no extra config needed.
 
 ## Deployment
 
-The [Render Blueprint](render.yaml) runs a free demo service from `master`. The
-[Dockerfile](Dockerfile) builds the React frontend and serves it through FastAPI, so
-pages, API requests, and WebSocket connections share one HTTPS address.
+### Vercel Hobby and Upstash Free
 
-1. Sign in to [Render](https://dashboard.render.com/) and choose **New > Blueprint**.
-2. Connect your GitHub account and select `oree-xx/StudyWars`, branch `master`.
-3. Review the free service in `render.yaml` and enter your `GEMINI_API_KEY` when prompted.
-   This key belongs in Render's environment settings, never in the repository or frontend.
-4. Deploy the Blueprint, then open the service's `onrender.com` address.
+[vercel.json](vercel.json) deploys the whole application in one Vercel project. The build
+places React files in `public/` for Vercel's CDN, while [api/index.py](api/index.py) exposes
+the shared FastAPI app for `/api`, `/ws`, and `/health`. Pages and live connections use
+the same HTTPS domain.
 
-For subsequent pushes, **After CI Checks Pass** makes Render wait for all GitHub checks
-before deploying. The workflow checks the backend, frontend, and production container.
-Creating this service in your Render account is a one-time setup; committing the Blueprint
-alone does not create a live deployment. See [Render's deployment docs](https://render.com/docs/deploys).
+1. Create an **Upstash Free** Redis database in Frankfurt, matching the function region
+   `fra1`. Keep the database on Free. Copy its TLS Redis TCP URL.
+2. Import `oree-xx/StudyWars` into a **Vercel Hobby** project. Use repository root `.` and
+   production branch `master`; the committed configuration selects the **Other** preset,
+   builds the frontend, and packages the Python function separately.
+3. Add these server environment variables to Production and, if desired, Preview:
 
-The [free service](https://render.com/docs/free) sleeps after 15 minutes without inbound
-traffic and can take about a minute to wake. Rooms and scores are kept in memory, so
-sleep, restarts, and redeploys clear active games. Keep one service instance and one
-backend worker; the container already starts one worker. LLM API usage has its own
-provider quotas and pricing, separate from hosting.
+   | Variable | Value |
+   |---|---|
+   | `GEMINI_API_KEY` | Your Google AI Studio key |
+   | `LLM_PROVIDER` | `gemini` |
+   | `GEMINI_MODEL` | `gemini-3.5-flash-lite` |
+   | `REDIS_URL` | The Upstash `rediss://` TCP connection URL |
+   | `ROOM_STORAGE` | `redis` |
+   | `ROOM_TTL_SECONDS` | `86400` |
+   | `REDIS_KEY_PREFIX` | `studywars` |
 
-To check the same production image locally, run from the repository root:
+4. Keep **Fluid compute** enabled, deploy, and check `/health` before hosting a quiz.
+   GitHub Actions runs the repository's tests on every push; Vercel's Git integration
+   builds deployments from the connected branch. Secrets stay in the server environment
+   and must never use a `VITE_` prefix or be committed to Git.
+
+The production Redis namespace stays stable across deployments. Preview deployments use
+separate namespaces so their test rooms do not change production games. Changing Redis
+databases or `REDIS_KEY_PREFIX` starts a separate set of rooms.
+
+Vercel Hobby allows [WebSocket connections](https://vercel.com/docs/functions/websockets)
+for up to 300 seconds per invocation. Clients reconnect automatically and restore their
+room from Redis, including the original question deadline. This supports longer games
+without keeping one Python process alive indefinitely. Functions can still have a cold
+start, and free-plan usage limits still apply. PDF uploads are capped at 4 MiB to fit inside
+Vercel's 4.5 MB total request limit; paste extracted notes for larger documents.
+
+Upstash Free currently includes 500,000 commands per month and 10 GB monthly bandwidth;
+check its [current limits](https://upstash.com/pricing/redis) for the storage allowance and
+other quotas. [Adding a payment method](https://upstash.com/docs/redis/howto/upgrade-database)
+switches free account resources to paid usage. Free databases may be archived after
+prolonged inactivity. LLM API quotas
+and pricing are separate from hosting and storage.
+
+### Local production container
+
+The [Dockerfile](Dockerfile) remains available for local checks or another Docker host.
+It serves the built frontend and backend together. Run from the repository root:
 
 ```bash
 docker build -t studywars .
@@ -235,8 +277,10 @@ docker run --rm -p 8000:8000 --env-file server/.env studywars
 ```
 
 Open `http://localhost:8000`. `PORT` controls the container's listening port (default
-`8000`); Render supplies its own value. `FRONTEND_DIST` points to the compiled frontend
-and is set inside the image. Local development can continue using Vite as described above.
+`8000`). `FRONTEND_DIST` points to the compiled frontend and is set inside the image.
+Set `REDIS_URL` in the supplied environment file to preserve rooms between containers.
+The older [Render Blueprint](render.yaml) is retained for existing Docker deployments;
+the Vercel project uses `vercel.json` instead.
 
 ## Playing a game
 
@@ -328,7 +372,8 @@ server/                FastAPI backend
     ai.py                LLM integration (question generation)
     pdf_utils.py          PDF text extraction
     models.py             Question schema
-    rooms.py               In-memory game/room state + scoring
+    rooms.py               Room state and scoring
+    persistence.py         Atomic Redis storage and Pub/Sub; local memory fallback
     routers/
       questions.py          POST /api/generate-questions
       rooms.py                POST /api/rooms
@@ -350,12 +395,17 @@ client/                React frontend
 
 .github/workflows/ci.yml  Automated tests, lint, build, and container checks
 Dockerfile               Production frontend + backend image
-render.yaml              Free Render service and deployment after CI passes
+api/index.py             Vercel Python function adapter
+index.py                 Shared FastAPI deployment entrypoint
+pyproject.toml / uv.lock  Python 3.12 deployment metadata and locked dependencies
+requirements.txt         Vercel dependencies, kept in sync with server/requirements.txt
+vercel.json              Vercel build, CDN routes, and function settings
+render.yaml              Alternative Render Docker deployment
 ```
 
 ## Roadmap
 
-- [ ] Persist rooms/scores beyond process restarts
+- [x] Persist rooms/scores beyond process restarts
 - [ ] Support image-based question generation (diagrams, slides)
 - [ ] Exportable results (CSV / share link)
 

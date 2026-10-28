@@ -13,6 +13,13 @@ client/node_modules/
 client/dist/
 client/.env
 
+# Deployment output and local secrets
+/.vercel/
+/public/
+/.env
+/.env.*
+!/.env.example
+
 # Editors / OS
 .vscode/
 .idea/

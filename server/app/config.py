@@ -1,14 +1,17 @@
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings, loaded from environment variables / .env file."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 
     llm_provider: str = "gemini"
-    gemini_api_key: str = ""
+    gemini_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("GEMINI_API_KEY", "GEMINI_KEY"),
+    )
     gemini_model: str = "gemini-3.5-flash-lite"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-6"

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "fluid": true,
+  "regions": ["fra1"],
+  "buildCommand": "npm --prefix client ci && npm --prefix client run build -- --outDir ../public --emptyOutDir",
+  "installCommand": "",
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{client/**,docs/**,server/tests/**,server/venv/**,server/uploads/**,**/__pycache__/**,**/.env,**/.env.*}"
+    }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/host", "destination": "/index.html" },
+    { "source": "/join", "destination": "/index.html" },
+    { "source": "/play", "destination": "/index.html" },
+    { "source": "/api/:path*", "destination": "/api/index.py" },
+    { "source": "/ws/:path*", "destination": "/api/index.py" },
+    { "source": "/health", "destination": "/api/index.py" },
+    { "source": "/docs", "destination": "/api/index.py" },
+    { "source": "/openapi.json", "destination": "/api/index.py" }
+  ]
+}
