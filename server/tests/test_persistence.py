@@ -4,8 +4,9 @@ import json
 import os
 import unittest
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from redis.exceptions import AuthenticationError
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.config import Settings, settings
@@ -293,6 +294,46 @@ class StorageConfigurationTests(unittest.IsolatedAsyncioTestCase):
         client.get.return_value = None
         with self.assertRaises(RoomMissing):
             await store.get("ABCDEF")
+
+    async def test_redis_failure_logs_only_operation_and_original_exception_type(self):
+        for operation in ("create", "get", "mutate", "subscribe", "health"):
+            for error_type in (AuthenticationError, RedisConnectionError):
+                with self.subTest(operation=operation, error_type=error_type.__name__):
+                    secret = "rediss://default:private-password@private-host:6379"
+                    failure = error_type(secret)
+                    client = MagicMock()
+                    client.set = AsyncMock(side_effect=failure)
+                    client.get = AsyncMock(side_effect=failure)
+                    client.pipeline.side_effect = failure
+                    client.pubsub.side_effect = failure
+                    client.ping = AsyncMock(side_effect=failure)
+                    store = RedisRoomStore(secret, "private-prefix", client=client)
+
+                    with self.assertLogs("app.persistence", level="WARNING") as logs:
+                        with self.assertRaises(StorageUnavailable) as error:
+                            if operation == "create":
+                                await store.create("ABCDEF", {"version": 1})
+                            elif operation == "get":
+                                await store.get("ABCDEF")
+                            elif operation == "mutate":
+                                await store.mutate("ABCDEF", lambda document: (None, False))
+                            elif operation == "subscribe":
+                                async with store.subscribe("ABCDEF"):
+                                    self.fail("Subscription should fail before opening")
+                            else:
+                                await store.health()
+
+                    self.assertEqual(len(logs.records), 1)
+                    record = logs.records[0]
+                    self.assertEqual(record.args, (operation, error_type.__name__))
+                    self.assertEqual(
+                        record.getMessage(),
+                        f"Redis operation failed: operation={operation} error_type={error_type.__name__}",
+                    )
+                    self.assertIsNone(record.exc_info)
+                    self.assertIsNone(record.stack_info)
+                    self.assertNotIn(secret, "\n".join(logs.output))
+                    self.assertNotIn("private-", str(error.exception))
 
 
 @unittest.skipUnless(os.getenv("TEST_REDIS_URL"), "Set TEST_REDIS_URL for local Redis integration")

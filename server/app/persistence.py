@@ -2,6 +2,7 @@
 import asyncio
 import copy
 import json
+import logging
 import time
 from contextlib import asynccontextmanager
 
@@ -9,6 +10,17 @@ from redis.asyncio import Redis
 from redis.backoff import NoBackoff
 from redis.exceptions import RedisError, WatchError
 from redis.retry import Retry
+
+
+logger = logging.getLogger(__name__)
+
+
+def _log_redis_failure(operation, error):
+    # Redis errors can contain connection URLs and credentials. Log only the type.
+    logger.warning(
+        "Redis operation failed: operation=%s error_type=%s",
+        operation, type(error).__name__,
+    )
 
 
 class StorageUnavailable(Exception):
@@ -121,13 +133,15 @@ class RedisRoomStore:
             return bool(await self.client.set(
                 self.key(code), json.dumps(document), nx=True, ex=self.ttl,
             ))
-        except RedisError:
+        except RedisError as error:
+            _log_redis_failure("create", error)
             raise StorageUnavailable("Room storage is temporarily unavailable.") from None
 
     async def get(self, code):
         try:
             return _decode(await self.client.get(self.key(code)))
-        except RedisError:
+        except RedisError as error:
+            _log_redis_failure("get", error)
             raise StorageUnavailable("Room storage is temporarily unavailable.") from None
 
     async def mutate(self, code, change):
@@ -153,7 +167,8 @@ class RedisRoomStore:
                     except WatchError:
                         await asyncio.sleep(min(0.002 * (attempt + 1), 0.03))
             raise StorageUnavailable("The room is busy. Please reconnect and try again.")
-        except RedisError:
+        except RedisError as error:
+            _log_redis_failure("mutate", error)
             raise StorageUnavailable("Room storage is temporarily unavailable.") from None
 
     @asynccontextmanager
@@ -181,13 +196,15 @@ class RedisRoomStore:
                             raise StorageUnavailable("Room updates were interrupted. Please reconnect.")
 
                 yield wait_for_change
-        except (RedisError, TimeoutError):
+        except (RedisError, TimeoutError) as error:
+            _log_redis_failure("subscribe", error)
             raise StorageUnavailable("Room updates are temporarily unavailable.") from None
 
     async def health(self):
         try:
             return await self.client.ping()
-        except RedisError:
+        except RedisError as error:
+            _log_redis_failure("health", error)
             raise StorageUnavailable("Room storage is temporarily unavailable.") from None
 
     async def close(self):
