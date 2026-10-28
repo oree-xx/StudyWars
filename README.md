@@ -91,48 +91,37 @@ Host or join a game in your browser — no local setup needed. The demo runs on 
 with Upstash Redis for persistent rooms and scores. See [Playing a game](#playing-a-game)
 for the host and player steps.
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Home</h3>
-      <img src="docs/screenshots/home.jpg" width="100%" alt="StudyWars homepage">
-    </td>
-    <td width="50%" valign="top">
-      <h3>Quiz setup</h3>
-      <img src="docs/screenshots/host-setup.jpg" width="100%" alt="Host quiz setup with PDF upload and study notes">
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Question review</h3>
-      <img src="docs/screenshots/question-review.jpg" width="100%" alt="Generated questions ready for the host to review">
-    </td>
-    <td width="50%" valign="top">
-      <h3>Game lobby</h3>
-      <img src="docs/screenshots/host-lobby.jpg" width="100%" alt="Host lobby with room code and joined players">
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Join a game</h3>
-      <img src="docs/screenshots/join-quiz.jpg" width="100%" alt="Join quiz form with room code and player name">
-    </td>
-    <td width="50%" valign="top">
-      <h3>Live questions</h3>
-      <img src="docs/screenshots/player-answer-options.jpg" width="100%" alt="Player question with countdown and answer options">
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Answer reveal</h3>
-      <img src="docs/screenshots/host-reveal.jpg" width="100%" alt="Host answer reveal with the correct answer and explanation">
-    </td>
-    <td width="50%" valign="top">
-      <h3>Final leaderboard</h3>
-      <img src="docs/screenshots/final-results.jpg" width="100%" alt="Final quiz results and player leaderboard">
-    </td>
-  </tr>
-</table>
+### Home
+
+![StudyWars homepage](docs/screenshots/home.jpg)
+
+### Quiz setup
+
+![Host quiz setup with PDF upload and study notes](docs/screenshots/host-setup.jpg)
+
+### Question review
+
+![Generated questions ready for the host to review](docs/screenshots/question-review.jpg)
+
+### Game lobby
+
+![Host lobby with room code and joined players](docs/screenshots/host-lobby.jpg)
+
+### Join a game
+
+![Join quiz form with room code and player name](docs/screenshots/join-quiz.jpg)
+
+### Live questions
+
+![Player question with countdown and answer options](docs/screenshots/player-answer-options.jpg)
+
+### Answer reveal
+
+![Host answer reveal with the correct answer and explanation](docs/screenshots/host-reveal.jpg)
+
+### Final leaderboard
+
+![Final quiz results and player leaderboard](docs/screenshots/final-results.jpg)
 
 ## Tech stack
 
