@@ -100,6 +100,28 @@ class GenerationEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("PDF could not be read", response.json()["detail"])
 
+    def test_pdf_upload_limit_accepts_exact_boundary(self):
+        generate = AsyncMock(return_value=[Question.model_validate(QUESTION)])
+        with patch("app.routers.questions.extract_text_from_pdf", return_value="Study notes") as extract, \
+                patch("app.routers.questions.generate_questions", generate), TestClient(app) as client:
+            response = client.post("/api/generate-questions", data={"num_questions": "1"}, files={
+                "file": ("notes.pdf", b"x" * (4 * 1024 * 1024), "application/pdf"),
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(extract.call_args.args[0]), 4_194_304)
+        generate.assert_awaited_once_with("Study notes", 1)
+
+    def test_oversize_pdf_is_rejected_before_parsing_or_generation(self):
+        with patch("app.routers.questions.extract_text_from_pdf") as extract, \
+                patch("app.routers.questions.generate_questions", new_callable=AsyncMock) as generate, TestClient(app) as client:
+            response = client.post("/api/generate-questions", files={
+                "file": ("notes.pdf", b"x" * (4 * 1024 * 1024 + 1), "application/pdf"),
+            })
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("4 MiB", response.json()["detail"])
+        extract.assert_not_called()
+        generate.assert_not_awaited()
+
 
 if __name__ == "__main__":
     unittest.main()

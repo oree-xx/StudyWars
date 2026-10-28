@@ -1,132 +1,192 @@
-import re
+"""WebSocket connections hold no authoritative game state."""
+import asyncio
+import copy
+import os
 import secrets
 import time
-import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-from app.rooms import Player, TIME_LIMIT_SECONDS, room_manager
+from app.persistence import RoomMissing, StorageUnavailable
+from app.rooms import (
+    PLAYER_TOKEN, ROOM_CODE, RENEW_INTERVAL_SECONDS, SessionError,
+    room_manager, snapshot, verify_connection,
+)
 
 router = APIRouter()
-PLAYER_TOKEN = re.compile(r"[A-Za-z0-9_-]{32,128}\Z")
 
 
-async def close_invalid(websocket: WebSocket, code: int, reason: str):
-    # Complete the handshake so browsers receive the application close code.
-    await websocket.accept()
-    await websocket.close(code=code, reason=reason)
+async def close_socket(websocket, code, reason):
+    try:
+        if websocket.application_state == WebSocketState.CONNECTING:
+            await websocket.accept()
+        if websocket.application_state != WebSocketState.DISCONNECTED:
+            await websocket.close(code=code, reason=reason)
+    except (WebSocketDisconnect, RuntimeError):
+        pass
 
 
-async def close_replaced(websocket: WebSocket | None):
-    if websocket is not None:
+class SocketSession:
+    def __init__(self, websocket, manager, code, role, connection_id, player_id, document):
+        self.websocket = websocket
+        self.manager = manager
+        self.code = code
+        self.role = role
+        self.connection_id = connection_id
+        self.player_id = player_id
+        self.document = document
+        self.last_public = None
+        self.lock = asyncio.Lock()
+        self.last_renewed = time.monotonic()
+
+    async def sync(self, document):
+        # Call under the per-socket lock: the answer receipt must be sent before
+        # the notification watcher can send the resulting reveal.
+        verify_connection(document, self.role, self.player_id, self.connection_id)
+        state = snapshot(document, self.player_id)
+        comparable = copy.deepcopy(state)
+        if comparable["question"]:
+            comparable["question"].pop("server_time")
+        previous = self.last_public
+        self.document = document
+        if comparable == previous:
+            return
+        if previous is not None:
+            previous_index = previous["question"]["index"] if previous["question"] else None
+            current_index = state["question"]["index"] if state["question"] else None
+            if state["state"] == "question" and (previous["state"] != "question" or previous_index != current_index):
+                await self.websocket.send_json(state["question"])
+            elif state["state"] == "reveal" and (previous["state"] != "reveal" or previous_index != current_index):
+                await self.websocket.send_json(state["reveal"])
+            elif state["state"] == "ended" and previous["state"] != "ended":
+                await self.websocket.send_json({"type": "game_over", "leaderboard": state["leaderboard"]})
+            old_presence = {p["id"]: (p["name"], p["connected"]) for p in previous["players"]}
+            new_presence = {p["id"]: (p["name"], p["connected"]) for p in state["players"]}
+            if old_presence != new_presence:
+                joined = any(player_id not in old_presence or (presence[1] and not old_presence[player_id][1])
+                             for player_id, presence in new_presence.items())
+                kind = "player_joined" if joined else "player_left"
+                await self.websocket.send_json({"type": kind, "players": state["players"]})
+            if self.role == "host" and previous["answered_count"] != state["answered_count"]:
+                await self.websocket.send_json({
+                    "type": "player_answered", "answered_count": state["answered_count"],
+                    "total_players": state["total_players"],
+                })
+        # Snapshots recover coalesced/missed transitions and accepted answers.
+        await self.websocket.send_json(state)
+        self.last_public = comparable
+
+    async def receive(self):
+        while True:
+            try:
+                data = await asyncio.wait_for(self.websocket.receive_json(), timeout=60)
+            except ValueError:
+                continue
+            except TimeoutError:
+                raise SessionError(1013, "Connection timed out. Please reconnect.") from None
+            if not isinstance(data, dict):
+                continue
+            kind = data.get("type")
+            allowed = {"ping", "start_game", "next_question", "reveal_now"} if self.role == "host" else {"ping", "answer"}
+            if kind not in allowed:
+                continue
+            async with self.lock:
+                if kind == "ping" and time.monotonic() - self.last_renewed < RENEW_INTERVAL_SECONDS:
+                    # Socket liveness needs no Redis write every 15 seconds.
+                    await self.websocket.send_json({"type": "pong"})
+                    continue
+                document, receipt = await self.manager.command(
+                    self.code, self.role, self.player_id, self.connection_id, data,
+                )
+                if kind == "ping":
+                    self.last_renewed = time.monotonic()
+                if receipt is not None:
+                    await self.websocket.send_json(receipt)
+                await self.sync(document)
+
+    async def watch(self, wait_for_change):
+        notification = asyncio.create_task(wait_for_change())
         try:
-            await websocket.close(code=4002, reason="Session opened in another connection.")
-        except Exception:
-            pass
+            while True:
+                deadline = self.document["question_ends_at"] if self.document["state"] == "question" else None
+                delay = max(0, deadline - time.time()) if deadline is not None else None
+                done, _ = await asyncio.wait({notification}, timeout=delay)
+                async with self.lock:
+                    if done:
+                        notification.result()
+                        notification = asyncio.create_task(wait_for_change())
+                        document = await self.manager.store.get(self.code)
+                    else:
+                        # Concurrent timers on different instances all attempt the
+                        # same conditional transition; only one can commit it.
+                        document = await self.manager.expire(self.code, self.document["current_index"])
+                    await self.sync(document)
+        finally:
+            notification.cancel()
+            await asyncio.gather(notification, return_exceptions=True)
+
+    async def run(self, wait_for_change):
+        await self.sync(self.document)
+        tasks = [asyncio.create_task(self.receive()), asyncio.create_task(self.watch(wait_for_change))]
+        try:
+            # Recycle before Vercel's 300s limit; the next instance resumes Redis.
+            timeout = 270 if os.getenv("VERCEL") == "1" else None
+            done, _ = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+            if not done:
+                raise SessionError(1012, "Reconnecting to resume your room.")
+            for task in done:
+                task.result()
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+
+async def serve_socket(websocket, room_code, role, token, name="", manager=None):
+    manager = manager or room_manager
+    code = room_code.upper()
+    if not ROOM_CODE.fullmatch(code):
+        await close_socket(websocket, 4001 if role == "host" else 4004, "Room not found.")
+        return
+    if role == "player" and not PLAYER_TOKEN.fullmatch(token):
+        await close_socket(websocket, 4001, "A valid player session is required.")
+        return
+    if role == "host" and (not token or len(token) > 128):
+        await close_socket(websocket, 4001, "This host session is no longer available.")
+        return
+    connection_id = secrets.token_urlsafe(24)
+    player_id = None
+    claimed = False
+    await websocket.accept()
+    try:
+        async with manager.store.subscribe(code) as wait_for_change:
+            document, player_id = await manager.connect(code, role, token, connection_id, name)
+            claimed = True
+            session = SocketSession(websocket, manager, code, role, connection_id, player_id, document)
+            await session.run(wait_for_change)
+    except WebSocketDisconnect:
+        pass
+    except SessionError as error:
+        await close_socket(websocket, error.code, error.reason)
+    except RoomMissing:
+        await close_socket(websocket, 4001 if role == "host" else 4004, "This room is no longer available.")
+    except StorageUnavailable:
+        await close_socket(websocket, 1013, "Room storage is temporarily unavailable. Please reconnect.")
+    except RuntimeError:
+        # Starlette can raise after a local close; unrelated failures stay visible.
+        if websocket.application_state != WebSocketState.DISCONNECTED:
+            raise
+    finally:
+        if claimed:
+            await manager.disconnect(code, role, player_id, connection_id)
 
 
 @router.websocket("/ws/host/{room_code}")
 async def host_socket(websocket: WebSocket, room_code: str, token: str = ""):
-    room = room_manager.get(room_code)
-    if room is None or not secrets.compare_digest(room.host_token, token):
-        await close_invalid(websocket, 4001, "This host session is no longer available.")
-        return
-
-    await websocket.accept()
-    try:
-        async with room.lock:
-            if room.state == "question" and time.monotonic() - room.question_started_at >= TIME_LIMIT_SECONDS:
-                await room._reveal_answer()
-            previous = room.host_ws
-            room.host_ws = websocket
-            await close_replaced(previous)
-            await websocket.send_json(room.snapshot())
-        while True:
-            try:
-                data = await websocket.receive_json()
-            except ValueError:
-                continue
-            if room.host_ws is not websocket or not isinstance(data, dict):
-                continue
-            msg_type = data.get("type")
-            if msg_type == "ping":
-                await websocket.send_json({"type": "pong"})
-            elif msg_type == "start_game":
-                await room.start_game(websocket)
-            elif msg_type == "next_question":
-                await room.advance_question(websocket)
-            elif msg_type == "reveal_now":
-                await room.reveal_answer(websocket)
-    except WebSocketDisconnect:
-        pass
-    except RuntimeError:
-        # Closing a replaced Starlette socket locally can make the next receive
-        # raise RuntimeError before its remote disconnect event is consumed.
-        if websocket.application_state != WebSocketState.DISCONNECTED and room.host_ws is websocket:
-            raise
-    finally:
-        async with room.lock:
-            if room.host_ws is websocket:
-                room.host_ws = None
+    await serve_socket(websocket, room_code, "host", token)
 
 
 @router.websocket("/ws/player/{room_code}")
-async def player_socket(
-    websocket: WebSocket, room_code: str, name: str = "", player_token: str = "",
-):
-    room = room_manager.get(room_code)
-    if room is None:
-        await close_invalid(websocket, 4004, "Room not found.")
-        return
-    if not PLAYER_TOKEN.fullmatch(player_token):
-        await close_invalid(websocket, 4001, "A valid player session is required.")
-        return
-
-    await websocket.accept()
-    player = None
-    try:
-        async with room.lock:
-            player = room.player_with_token(player_token)
-            if player is None:
-                if room.state != "lobby":
-                    await websocket.close(code=4003, reason="This game has already started.")
-                    return
-                player = Player(
-                    id=str(uuid.uuid4()), name=name.strip()[:20] or "Player",
-                    token=player_token,
-                )
-                room.players[player.id] = player
-            if room.state == "question" and time.monotonic() - room.question_started_at >= TIME_LIMIT_SECONDS:
-                await room._reveal_answer()
-            previous = player.websocket
-            player.websocket = websocket
-            await close_replaced(previous)
-            await websocket.send_json(room.snapshot(player))
-            await room.broadcast({"type": "player_joined", "players": room.leaderboard()})
-
-        while True:
-            try:
-                data = await websocket.receive_json()
-            except ValueError:
-                continue
-            if player.websocket is not websocket or not isinstance(data, dict):
-                continue
-            if data.get("type") == "ping":
-                await websocket.send_json({"type": "pong"})
-            elif data.get("type") == "answer":
-                await room.submit_answer(
-                    player.id, data.get("option_index"), data.get("question_index"), websocket,
-                )
-    except WebSocketDisconnect:
-        pass
-    except RuntimeError:
-        replaced = player is not None and player.websocket is not websocket
-        if websocket.application_state != WebSocketState.DISCONNECTED and not replaced:
-            raise
-    finally:
-        async with room.lock:
-            # An older socket closing must not detach a newly resumed session.
-            if player is not None and player.websocket is websocket:
-                player.websocket = None
-                await room.broadcast({"type": "player_left", "players": room.leaderboard()})
+async def player_socket(websocket: WebSocket, room_code: str, name: str = "", player_token: str = ""):
+    await serve_socket(websocket, room_code, "player", player_token, name)

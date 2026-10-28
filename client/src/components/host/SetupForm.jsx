@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { pdfUploadError } from '../../lib/upload'
 
 const NUM_QUESTIONS_OPTIONS = [3, 5, 8, 10]
 
@@ -7,7 +8,8 @@ export default function SetupForm({ onGenerate, generating, error }) {
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState(null)
   const [numQuestions, setNumQuestions] = useState(5)
-  const canSubmit = inputMode === 'notes' ? notes.trim().length > 0 : !!file
+  const fileError = inputMode === 'file' ? pdfUploadError(file) : ''
+  const canSubmit = inputMode === 'notes' ? notes.trim().length > 0 : !!file && !fileError
 
   function handleSubmit(event) {
     event.preventDefault()
@@ -28,11 +30,12 @@ export default function SetupForm({ onGenerate, generating, error }) {
         <textarea id="study-notes" className="text-input" value={notes} onChange={event => setNotes(event.target.value)} rows={8} placeholder="Start with what you’re learning. Paste your notes here…" disabled={generating} />
         <div className="helper"><span>More context makes better questions.</span><span>{notes.length.toLocaleString()} characters</span></div>
       </div> : <div className="upload-zone">
-        <input id="study-pdf" type="file" aria-label="Upload a PDF" accept="application/pdf,.pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} disabled={generating} />
+        <input id="study-pdf" type="file" aria-label="Upload a PDF" aria-describedby="pdf-upload-help" aria-invalid={!!fileError} accept="application/pdf,.pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} disabled={generating} />
+        <p id="pdf-upload-help" className="small muted" style={{ marginTop: 12 }}>PDF files up to 4 MiB.</p>
         {file && <p className="small muted" style={{ marginTop: 12, overflowWrap: 'anywhere' }}>{file.name}</p>}
       </div>}
       <fieldset><legend className="field-label">How many questions?</legend><div className="count-pills">{NUM_QUESTIONS_OPTIONS.map(count => <button type="button" key={count} aria-pressed={numQuestions === count} onClick={() => setNumQuestions(count)} disabled={generating}>{count}</button>)}</div><p className="helper">20 seconds per question. Faster correct answers earn more points.</p></fieldset>
-      {error && <p className="error-notice" role="alert">{error}</p>}
+      {(fileError || error) && <p className="error-notice" role="alert">{fileError || error}</p>}
       <button type="submit" disabled={!canSubmit || generating} className="btn btn-primary full-width">{generating ? 'Building your questions…' : 'Generate my quiz'}<span aria-hidden="true">{generating ? '↻' : '✦'}</span></button>
       {generating && <p className="muted small centered" role="status">Finding the key ideas in your notes. This can take a moment.</p>}
     </form>

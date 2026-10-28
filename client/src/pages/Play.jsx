@@ -8,7 +8,7 @@ import PlayerReveal from '../components/play/PlayerReveal'
 import WaitingScreen from '../components/play/WaitingScreen'
 import { useGameSocket } from '../hooks/useGameSocket'
 import { playerSocketUrl } from '../lib/ws'
-import { getPlayerSession, normalizeQuestion, saveSession } from '../lib/session'
+import { getPlayerSession, normalizeQuestion, pendingOptionAfterSnapshot, saveSession } from '../lib/session'
 
 function Play() {
   const location = useLocation()
@@ -43,13 +43,15 @@ function Play() {
     switch (message.type) {
       case 'room_state': {
         const current = normalizeQuestion(message.question)
+        const pending = pendingOptionAfterSnapshot(pendingRef.current, questionRef.current?.index, message)
         setHasJoined(true)
         setPlayerId(message.player_id)
         setPlayers(message.players)
         setQuestion(current)
         questionRef.current = current
         setSelectedOption(message.selected_option ?? null)
-        clearPending()
+        pendingRef.current = pending
+        setPendingOption(pending)
         setAnswerError('')
         setReveal(message.reveal)
         setFinalLeaderboard(message.leaderboard || [])

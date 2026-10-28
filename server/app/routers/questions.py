@@ -10,6 +10,7 @@ from app.pdf_utils import extract_text_from_pdf
 router = APIRouter(prefix="/api", tags=["questions"])
 
 MAX_CHARS = 40_000
+MAX_PDF_BYTES = 4 * 1024 * 1024
 
 
 @router.post("/generate-questions", response_model=GenerateQuestionsResponse)
@@ -26,7 +27,9 @@ async def generate_questions_endpoint(
     if file:
         if file.content_type != "application/pdf":
             raise HTTPException(400, "Only PDF files are supported for upload.")
-        raw = await file.read()
+        raw = await file.read(MAX_PDF_BYTES + 1)
+        if len(raw) > MAX_PDF_BYTES:
+            raise HTTPException(413, "Choose a PDF smaller than 4 MiB, or paste your notes.")
         try:
             text = await run_in_threadpool(extract_text_from_pdf, raw)
         except Exception:

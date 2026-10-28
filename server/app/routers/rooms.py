@@ -1,16 +1,17 @@
 from typing import List
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models import Question
 from app.rooms import room_manager
+from app.persistence import StorageUnavailable
 
 router = APIRouter(prefix="/api", tags=["rooms"])
 
 
 class CreateRoomRequest(BaseModel):
-    questions: List[Question]
+    questions: List[Question] = Field(min_length=1, max_length=20)
 
 
 class CreateRoomResponse(BaseModel):
@@ -19,8 +20,8 @@ class CreateRoomResponse(BaseModel):
 
 
 @router.post("/rooms", response_model=CreateRoomResponse)
-def create_room(payload: CreateRoomRequest):
-    if not payload.questions:
-        raise HTTPException(400, "At least one question is required to create a room.")
-    room = room_manager.create_room(payload.questions)
-    return CreateRoomResponse(room_code=room.code, host_token=room.host_token)
+async def create_room(payload: CreateRoomRequest):
+    try:
+        return CreateRoomResponse(**await room_manager.create_room(payload.questions))
+    except StorageUnavailable as error:
+        raise HTTPException(503, str(error)) from None

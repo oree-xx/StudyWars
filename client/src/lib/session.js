@@ -43,3 +43,13 @@ export function normalizeQuestion(question) {
     deadline: Date.now() + Math.max(0, question.ends_at - question.server_time),
   }
 }
+
+// Other players can trigger a snapshot while our answer is still in flight.
+// Only a receipt, accepted answer, or question transition resolves that send.
+export function pendingOptionAfterSnapshot(pendingOption, questionIndex, snapshot) {
+  return snapshot.state === 'question'
+    && snapshot.question?.index === questionIndex
+    && snapshot.selected_option == null
+    ? pendingOption
+    : null
+}

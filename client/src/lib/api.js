@@ -1,6 +1,7 @@
 // Thin fetch wrapper for the FastAPI backend. In dev, Vite proxies /api
 // straight through to the backend (see vite.config.js), so these paths
 // work unchanged in both dev and a same-origin production deployment.
+import { pdfUploadError } from './upload.js'
 
 async function readErrorDetail(res) {
   try {
@@ -20,6 +21,8 @@ export async function generateQuestions({ file, notes, numQuestions = 5 }) {
   if (!file && !notes) {
     throw new Error('Provide either a PDF file or notes text.')
   }
+  const fileError = pdfUploadError(file)
+  if (fileError) throw new Error(fileError)
 
   const formData = new FormData()
   if (file) formData.append('file', file)

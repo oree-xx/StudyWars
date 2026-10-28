@@ -145,11 +145,11 @@ function Host() {
       {stage === 'question' && currentQuestion && status !== 'closed' && (
         <LiveQuestion question={currentQuestion} answeredCount={answeredCount}
           totalPlayers={players.length} connected={connected}
-          onRevealNow={() => send({ type: 'reveal_now' })} />
+          onRevealNow={() => send({ type: 'reveal_now', question_index: currentQuestion.index })} />
       )}
       {stage === 'reveal' && reveal && status !== 'closed' && (
         <RevealScreen question={currentQuestion} reveal={reveal} isLastQuestion={isLastQuestion}
-          connected={connected} onNext={() => send({ type: 'next_question' })} />
+          connected={connected} onNext={() => send({ type: 'next_question', question_index: currentQuestion?.index })} />
       )}
       {stage === 'ended' && status !== 'closed' && <FinalResults leaderboard={finalLeaderboard} onRestart={handleRestart} />}
     </AppShell>

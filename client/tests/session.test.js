@@ -1,6 +1,6 @@
 import { beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getPlayerSession, normalizeQuestion, readSession, saveSession } from '../src/lib/session.js'
+import { getPlayerSession, normalizeQuestion, pendingOptionAfterSnapshot, readSession, saveSession } from '../src/lib/session.js'
 
 beforeEach(() => {
   const values = new Map()
@@ -61,4 +61,19 @@ test('expired snapshots never grant a new question interval', (context) => {
   context.mock.method(Date, 'now', () => 1000000)
   assert.equal(normalizeQuestion({ server_time: 800000, ends_at: 799000 }).deadline, 1000000)
   assert.equal(normalizeQuestion(null), null)
+})
+
+test('another player updating the room does not unlock an answer still awaiting a receipt', () => {
+  const snapshot = { state: 'question', question: { index: 3 }, selected_option: null }
+  assert.equal(pendingOptionAfterSnapshot(0, 3, snapshot), 0)
+  assert.equal(pendingOptionAfterSnapshot(2, 3, snapshot), 2)
+  assert.equal(pendingOptionAfterSnapshot(null, 3, snapshot), null)
+})
+
+test('accepted answers and question transitions resolve the pending send', () => {
+  const snapshot = { state: 'question', question: { index: 3 }, selected_option: null }
+  assert.equal(pendingOptionAfterSnapshot(2, 3, { ...snapshot, selected_option: 0 }), null)
+  assert.equal(pendingOptionAfterSnapshot(2, 2, snapshot), null)
+  assert.equal(pendingOptionAfterSnapshot(2, 3, { ...snapshot, state: 'reveal' }), null)
+  assert.equal(pendingOptionAfterSnapshot(2, 3, { ...snapshot, state: 'ended', question: null }), null)
 })
