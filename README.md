@@ -37,7 +37,7 @@
 - [API reference](#api-reference)
 - [Project structure](#project-structure)
 - [Contributing](#contributing)
-- [Built by](#built-by)
+- [Built by](#-built-by)
 - [License](#license)
 
 ## Why I built StudyWars
@@ -485,11 +485,11 @@ Got ideas? Contributions welcome.
 
 See [open issues](https://github.com/oree-xx/StudyWars/issues) for what's being worked on.
 
-## Built by
+## 👤 Built by
 
-**Oreoluwa Oluwasina** — Actuarial science student
+**Oreoluwa Oluwasina**, Actuarial science student, UNILAG 🇳🇬
 
-[github](https://github.com/oree-xx)
+[![GitHub](https://img.shields.io/badge/GitHub-oree--xx-black?style=flat-square&logo=github)](https://github.com/oree-xx) [![LinkedIn](https://img.shields.io/badge/LinkedIn-oreoluwa--oluwasina-0A66C2?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/oreoluwa-oluwasina/)
 
 ## License
 
