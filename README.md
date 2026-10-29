@@ -483,8 +483,14 @@ render.yaml              Alternative Render Docker deployment
 
 ## Contributing
 
-Issues and pull requests are welcome. If you're adding a feature, please open an issue first to
-discuss what you'd like to change.
+Got ideas? Contributions welcome.
+
+1. Fork this repo
+2. Create a branch: `git checkout -b feature/your-idea`
+3. Commit and push
+4. Open a pull request
+
+See [open issues](https://github.com/oree-xx/StudyWars/issues) for what's being worked on.
 
 ## License
 
