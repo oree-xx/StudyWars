@@ -36,8 +36,8 @@
 - [Testing](#testing)
 - [API reference](#api-reference)
 - [Project structure](#project-structure)
-- [Roadmap](#roadmap)
 - [Contributing](#contributing)
+- [Built by](#built-by)
 - [License](#license)
 
 ## Why I built StudyWars
@@ -474,13 +474,6 @@ vercel.json              Vercel build, CDN routes, and function settings
 render.yaml              Alternative Render Docker deployment
 ```
 
-## Roadmap
-
-- [x] Persist rooms/scores beyond process restarts
-- [ ] Let hosts enter a custom question count in the browser (the API already supports 1–20)
-- [ ] Support image-based question generation (diagrams, slides)
-- [ ] Exportable results (CSV / share link)
-
 ## Contributing
 
 Got ideas? Contributions welcome.
@@ -491,6 +484,10 @@ Got ideas? Contributions welcome.
 4. Open a pull request
 
 See [open issues](https://github.com/oree-xx/StudyWars/issues) for what's being worked on.
+
+## Built by
+
+[oree-xx](https://github.com/oree-xx)
 
 ## License
 
