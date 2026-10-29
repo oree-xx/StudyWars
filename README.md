@@ -72,16 +72,16 @@ flowchart LR
 
 ## Features
 
-- 🧠 **AI-generated quizzes** — drop in a PDF or raw notes and choose 3, 5, 8, or 10 multiple-choice questions, powered by the LLM API. The API supports counts from 1–20.
-- ⚡ **Real-time gameplay** — rooms, questions, reveals, and scoring are all pushed live over WebSockets.
-- 🏆 **Live leaderboard** — scores update after every question so players can see where they stand.
-- 📱 **No install for players** — join from any browser with a room code and a name.
-- 🎛️ **Host controls** — start the game, reveal answers, and advance questions on your own pace.
-- 🖥️ **Two synced views** — a big-screen host view for the room, and a lightweight player view for each device.
-- ⏱️ **Visible countdowns** — each question has a server-enforced 20-second limit. Correct answers earn up to 1,000 points, with more points for faster answers.
-- 🔄 **Connection recovery** — automatically reconnect after a dropped connection, or refresh the same tab to restore your room, score, and accepted answer.
-- 💾 **Persistent rooms** — Redis keeps quiz state, accepted answers, and scores across server restarts and deployments; inactive rooms expire after 24 hours.
-- ✨ **Refreshed interface** — responsive host and player screens, lettered answer cards, progress indicators, connection status, and clear answer confirmations.
+- **AI-generated quizzes** — drop in a PDF or raw notes and choose 3, 5, 8, or 10 multiple-choice questions, powered by the LLM API. The API supports counts from 1–20.
+- **Real-time gameplay** — rooms, questions, reveals, and scoring are all pushed live over WebSockets.
+- **Live leaderboard** — scores update after every question so players can see where they stand.
+- **No install for players** — join from any browser with a room code and a name.
+- **Host controls** — start the game, reveal answers, and advance questions on your own pace.
+- **Two synced views** — a big-screen host view for the room, and a lightweight player view for each device.
+- **Visible countdowns** — each question has a server-enforced 20-second limit. Correct answers earn up to 1,000 points, with more points for faster answers.
+- **Connection recovery** — automatically reconnect after a dropped connection, or refresh the same tab to restore your room, score, and accepted answer.
+- **Persistent rooms** — Redis keeps quiz state, accepted answers, and scores across server restarts and deployments; inactive rooms expire after 24 hours.
+- **Refreshed interface** — responsive host and player screens, lettered answer cards, progress indicators, connection status, and clear answer confirmations.
 
 ## Demo
 
