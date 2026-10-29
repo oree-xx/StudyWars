@@ -487,7 +487,9 @@ See [open issues](https://github.com/oree-xx/StudyWars/issues) for what's being 
 
 ## Built by
 
-[oree-xx](https://github.com/oree-xx)
+**Oreoluwa Oluwasina** — Actuarial science student
+
+[github](https://github.com/oree-xx)
 
 ## License
 
